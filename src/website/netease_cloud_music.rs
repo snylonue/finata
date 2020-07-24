@@ -7,12 +7,13 @@ use crate::FinataData;
 use crate::Format;
 use crate::error::Error;
 use crate::value_to_string;
+use crate::utils;
+use crate::utils::CLIENT;
 
 lazy_static! {
-    static ref CLIENT: reqwest::Client = reqwest::Client::new();
     static ref HEADERS: header::HeaderMap = {
         let mut headers = header::HeaderMap::new();
-        headers.insert(header::USER_AGENT, header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36"));
+        headers.insert(header::USER_AGENT, utils::UA.clone());
         headers.insert(header::REFERER, header::HeaderValue::from_static("https://music.163.com"));
         headers
     };
@@ -22,7 +23,7 @@ pub struct NeteaseCloudMusic {
     url: Url,
 }
 
-impl<'a> NeteaseCloudMusic {
+impl NeteaseCloudMusic {
     const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
     const SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
     pub const fn new(url: Url) -> Self {

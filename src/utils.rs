@@ -1,3 +1,5 @@
+use lazy_static::lazy_static;
+
 #[macro_export]
 macro_rules! value_to_string {
     ($v: expr) => {
@@ -12,4 +14,9 @@ macro_rules! value_to_string {
             _ => $crate::value_to_string!($or),
         }
     };
+}
+
+lazy_static! {
+    pub static ref CLIENT: reqwest::Client = reqwest::Client::new();
+    pub static ref UA: reqwest::header::HeaderValue = reqwest::header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
 }
