@@ -33,7 +33,7 @@ impl NeteaseCloudMusic {
         self.url
             .fragment()
             .map(|s| s.trim_start_matches("/song?id=").trim_end_matches('/'))
-            .ok_or(Error::invaild_url(&self.url))
+            .ok_or(Error::invalid_input_url(&self.url))
     }
     pub async fn raw_url(&self) -> Result<Url, Error> {
         let form = hmap! {

@@ -5,14 +5,14 @@ use thiserror::Error;
 pub enum Error {
     #[error("RequestError: {0}")]
     Request(#[from] reqwest::Error),
-    #[error("InvaildInput: {0}")]
-    InvaildInput(String),
+    #[error("InvalidInput: {0}")]
+    InvalidInput(String),
     #[error("Unexpect None")]
     None,
 }
 
 impl Error {
-    pub fn invaild_url<S: ToString>(s: &S) -> Self {
-        Self::InvaildInput(s.to_string())
+    pub fn invalid_input_url<S: ToString>(s: S) -> Self {
+        Self::InvalidInput(s.to_string())
     }
 }
