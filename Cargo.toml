@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 reqwest = { version = "0.10", features = ["json"] }
+lazy_static = "1"
+serde_json = "1.0"
