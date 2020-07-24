@@ -2,40 +2,18 @@ use reqwest::Url;
 use reqwest::header;
 use lazy_static::lazy_static;
 use serde_json::Value;
+use sugars::hmap;
 use crate::FinataData;
 use crate::Format;
 use crate::error::Error;
-
-macro_rules! hashmap {
-    ($($name: expr => $content: expr),*) => {
-        {
-            let mut hm = ::std::collections::HashMap::new();
-            $(hm.insert($name, $content);)*
-            hm
-        }
-    };
-}
-macro_rules! value_to_string {
-    ($v: expr) => {
-        match $v {
-            serde_json::Value::String(ref s) => Some(s.clone()),
-            _ => None,
-        }
-    };
-    ($v: expr, $or: expr) => {
-        match $v {
-            serde_json::Value::String(ref s) => Some(s.clone()),
-            _ => $crate::value_to_string!($or),
-        }
-    };
-}
+use crate::value_to_string;
 
 lazy_static! {
     static ref CLIENT: reqwest::Client = reqwest::Client::new();
     static ref HEADERS: header::HeaderMap = {
         let mut headers = header::HeaderMap::new();
-        headers.insert(header::USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36".parse().unwrap());
-        headers.insert(header::REFERER, "https://music.163.com".parse().unwrap());
+        headers.insert(header::USER_AGENT, header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36"));
+        headers.insert(header::REFERER, header::HeaderValue::from_static("https://music.163.com"));
         headers
     };
 }
@@ -57,7 +35,7 @@ impl<'a> NeteaseCloudMusic {
             .ok_or(Error::invaild_url(&self.url))
     }
     pub async fn raw_url(&self) -> Result<Url, Error> {
-        let form = hashmap!{
+        let form = hmap! {
             "ids" => format!("[{}]", self.id()?),
             "br" => String::from("999000")
         };
@@ -70,7 +48,7 @@ impl<'a> NeteaseCloudMusic {
         Ok(Url::parse(&url).unwrap())
     }
     pub async fn title(&self) -> Result<String, Error> {
-        let form = hashmap!{
+        let form = hmap! {
             "ids" => format!("[{}]", self.id()?)
         };
         let details: Value = CLIENT.post(Self::SONG_DETIAL_API)

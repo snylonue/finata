@@ -1,5 +1,6 @@
 pub mod website;
 pub mod error;
+pub mod utils;
 
 use reqwest::Url;
 use reqwest::header::HeaderMap;

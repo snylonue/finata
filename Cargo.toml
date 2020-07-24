@@ -11,3 +11,4 @@ reqwest = { version = "0.10", features = ["json"] }
 lazy_static = "1"
 serde_json = "1.0"
 thiserror = "1"
+sugars = "1"
