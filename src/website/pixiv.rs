@@ -10,11 +10,9 @@ use crate::utils;
 use crate::utils::CLIENT;
 
 lazy_static! {
-    static ref HEADERS: header::HeaderMap = {
-        let mut headers = header::HeaderMap::new();
-        headers.insert(header::USER_AGENT, utils::UA.clone());
-        headers.insert(header::REFERER, header::HeaderValue::from_static("https://www.pixiv.net/"));
-        headers
+    static ref HEADERS: header::HeaderMap = crate::hdmap! {
+        header::USER_AGENT => utils::UA.clone(),
+        header::REFERER => "https://www.pixiv.net/",
     };
     static ref IMAGE_API: Url = Url::parse("https://www.pixiv.net/ajax/illust/").unwrap();
 }

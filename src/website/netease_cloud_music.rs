@@ -11,11 +11,9 @@ use crate::utils;
 use crate::utils::CLIENT;
 
 lazy_static! {
-    static ref HEADERS: header::HeaderMap = {
-        let mut headers = header::HeaderMap::new();
-        headers.insert(header::USER_AGENT, utils::UA.clone());
-        headers.insert(header::REFERER, header::HeaderValue::from_static("https://music.163.com"));
-        headers
+    static ref HEADERS: header::HeaderMap = crate::hdmap! {
+        header::USER_AGENT => utils::UA.clone(),
+        header::REFERER => "https://music.163.com",
     };
 }
 
