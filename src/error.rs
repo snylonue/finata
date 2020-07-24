@@ -9,6 +9,8 @@ pub enum Error {
     InvalidInput(String),
     #[error("Unexpect None")]
     None,
+    #[error("InvalidUrl")]
+    InvalidUrl(#[from] url::ParseError),
 }
 
 impl Error {
