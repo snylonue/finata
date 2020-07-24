@@ -3,12 +3,14 @@ pub mod website;
 use reqwest::Url;
 use reqwest::header::HeaderMap;
 
+#[derive(Debug, PartialEq)]
 pub enum Format {
     Video,
     Audio,
     Text,
     Image,
 }
+#[derive(Debug, PartialEq)]
 pub struct FinataData {
     pub url: Url,
     pub raw_url: Vec<(Url, Format)>,
