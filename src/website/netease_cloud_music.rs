@@ -1,4 +1,5 @@
 use reqwest::Url;
+use reqwest::header;
 use lazy_static::lazy_static;
 use serde_json::Value;
 use crate::FinataData;
@@ -29,23 +30,22 @@ macro_rules! value_to_string {
 }
 
 lazy_static! {
-    static ref CLIENT: reqwest::Client = { let c = reqwest::Client::new();c };
-    static ref HEADERS: reqwest::header::HeaderMap = {
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert("User-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36".parse().unwrap());
-        headers.insert("Referer", "https://music.163.com".parse().unwrap());
+    static ref CLIENT: reqwest::Client = reqwest::Client::new();
+    static ref HEADERS: header::HeaderMap = {
+        let mut headers = header::HeaderMap::new();
+        headers.insert(header::USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36".parse().unwrap());
+        headers.insert(header::REFERER, "https://music.163.com".parse().unwrap());
         headers
     };
 }
 
 pub struct NeteaseCloudMusic {
     url: Url,
-    // setting: Setting,
 }
 
 impl<'a> NeteaseCloudMusic {
     const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
-    const _SONG_DETIAL_API: &'static str = "http://music.163.com/api/song/detail";
+    const _SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
     pub const fn new(url: Url) -> Self {
         Self { url }
     }
