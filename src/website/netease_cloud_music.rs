@@ -10,6 +10,9 @@ use crate::value_to_string;
 use crate::utils;
 use crate::utils::CLIENT;
 
+const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
+const SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
+
 lazy_static! {
     static ref HEADERS: header::HeaderMap = crate::hdmap! {
         header::USER_AGENT => utils::UA.clone(),
@@ -17,13 +20,11 @@ lazy_static! {
     };
 }
 
-pub struct NeteaseCloudMusic {
+pub struct Song {
     url: Url,
 }
 
-impl NeteaseCloudMusic {
-    const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
-    const SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
+impl Song {
     pub const fn new(url: Url) -> Self {
         Self { url }
     }
@@ -34,25 +35,21 @@ impl NeteaseCloudMusic {
             .ok_or(Error::invalid_input_url(&self.url))
     }
     pub async fn raw_url(&self) -> Result<Url, Error> {
-        let form = hmap! {
-            "ids" => format!("[{}]", self.id()?),
-            "br" => String::from("999000")
-        };
-        let url_info: Value = CLIENT.post(Self::SONG_URL_API)
+        let url_info: Value = CLIENT.post(SONG_URL_API)
             .headers(HEADERS.clone())
-            .form(&form)
+            .form(&hmap! {
+                "ids" => format!("[{}]", self.id()?),
+                "br" => String::from("999000")
+            })
             .send().await?
             .json().await?;
         let url = value_to_string!(url_info["data"][0]["url"]).ok_or(Error::None)?;
         Ok(Url::parse(&url).unwrap())
     }
     pub async fn title(&self) -> Result<String, Error> {
-        let form = hmap! {
-            "ids" => format!("[{}]", self.id()?)
-        };
-        let details: Value = CLIENT.post(Self::SONG_DETIAL_API)
+        let details: Value = CLIENT.post(SONG_DETIAL_API)
             .headers(HEADERS.clone())
-            .form(&form)
+            .form(&hmap! { "ids" => format!("[{}]", self.id()?) })
             .send().await?
             .json().await?;
         let name = value_to_string!(details["songs"][0]["name"]).ok_or(Error::None)?;
