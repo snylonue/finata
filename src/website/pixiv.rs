@@ -37,7 +37,7 @@ impl Pixiv {
         let data: Value = CLIENT.get(IMAGE_API.join(pid)?)
             .send().await?
             .json().await?;
-        let url = value_to_string!(data["body"]["urls"]["original"]).ok_or(Error::None)?;
+        let url = data["body"]["urls"]["original"].as_str().ok_or(Error::None)?;
         let title = value_to_string!(data["body"]["title"]);
         Ok(FinataData::new(self.url, vec![(url.parse()?, Format::Image)], HEADERS.clone(), title))
     }

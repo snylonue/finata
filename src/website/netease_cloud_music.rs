@@ -43,8 +43,8 @@ impl Song {
             })
             .send().await?
             .json().await?;
-        let url = value_to_string!(url_info["data"][0]["url"]).ok_or(Error::None)?;
-        Ok(Url::parse(&url).unwrap())
+        let url = url_info["data"][0]["url"].as_str().ok_or(Error::None)?;
+        Ok(Url::parse(url).unwrap())
     }
     pub async fn title(&self) -> Result<String, Error> {
         let details: Value = CLIENT.post(SONG_DETIAL_API)
@@ -56,7 +56,7 @@ impl Song {
         let arthor = details["songs"][0]["artists"]
             .as_array().ok_or(Error::None)?
             .iter()
-            .filter_map(|s| value_to_string!(s))
+            .filter_map(|s| s.as_str())
             .collect::<Vec<_>>();
         match arthor.len() {
             0 => Ok(name),
