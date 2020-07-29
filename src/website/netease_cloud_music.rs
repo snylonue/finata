@@ -69,8 +69,10 @@ impl Song {
     }
     pub async fn extract(self) -> Result<FinataData, Error> {
         let url = self.raw_url().await?;
-        let title = self.title().await?;
-        Ok(FinataData::new(self.url, vec![(url, Format::Audio)], HEADERS.clone(), Some(title)))
+        let title = self.title().await.ok();
+        Ok(FinataData::new(self.url, vec![(url, Format::Audio)], HEADERS.clone(), title))
+    }
+}
 impl List {
     pub const fn new(url: Url) -> Self {
         Self { url }
