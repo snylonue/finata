@@ -12,7 +12,7 @@ use crate::utils::CLIENT;
 
 const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
 const SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
-const PLAYLIST_DETAIL_API: &str = "https://music.163.com/weapi/v3/playlist/detail";
+const PLAYLIST_DETAIL_API: &str = "https://music.163.com/api/v3/playlist/detail";
 
 lazy_static! {
     static ref HEADERS: header::HeaderMap = crate::hdmap! {
@@ -47,8 +47,14 @@ impl Song {
             })
             .send().await?
             .json().await?;
-        let url = &url_info["data"][0]["url"].as_str().ok_or(Error::None)?;
-        Ok(Url::parse(url).unwrap())
+        match url_info["data"][0]["url"] {
+            Value::String(ref url) => Ok(Url::parse(url).unwrap()),
+            _ => if url_info["data"][0]["code"] == -110 {
+                Err(Error::needs_vip())
+            } else {
+                Err(Error::None)
+            }
+        }
     }
     pub async fn title(&self) -> Result<String, Error> {
         let details: Value = CLIENT.post(SONG_DETIAL_API)
@@ -94,7 +100,11 @@ impl List {
         let mut songs = Vec::with_capacity(track_ids.len());
         for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) { //skip invalid value
             let song_url = format!("https://music.163.com/#/song?id={}", track_id);
-            let raw_url = Song::new(Url::parse(&song_url).unwrap()).raw_url().await?;
+            let raw_url = match Song::new(Url::parse(&song_url).unwrap()).raw_url().await {
+                Ok(r) => r,
+                Err(Error::PermissionDenied(_)) => continue, // skip if a vip song is met
+                Err(e) => return Err(e)
+            };
             songs.push((raw_url, Format::Audio));
         }
         let name = value_to_string!(url_info["playlist"]["name"]);
