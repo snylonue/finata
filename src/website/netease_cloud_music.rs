@@ -12,6 +12,7 @@ use crate::utils::CLIENT;
 
 const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
 const SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
+const PLAYLIST_DETAIL_API: &str = "https://music.163.com/weapi/v3/playlist/detail";
 
 lazy_static! {
     static ref HEADERS: header::HeaderMap = crate::hdmap! {
@@ -21,6 +22,9 @@ lazy_static! {
 }
 
 pub struct Song {
+    url: Url,
+}
+pub struct List {
     url: Url,
 }
 
@@ -43,13 +47,13 @@ impl Song {
             })
             .send().await?
             .json().await?;
-        let url = url_info["data"][0]["url"].as_str().ok_or(Error::None)?;
+        let url = &url_info["data"][0]["url"].as_str().ok_or(Error::None)?;
         Ok(Url::parse(url).unwrap())
     }
     pub async fn title(&self) -> Result<String, Error> {
         let details: Value = CLIENT.post(SONG_DETIAL_API)
             .headers(HEADERS.clone())
-            .form(&hmap! { "ids" => format!("[{}]", self.id()?) })
+            .form(&hmap!{ "ids" => format!("[{}]", self.id()?) })
             .send().await?
             .json().await?;
         let name = value_to_string!(details["songs"][0]["name"]).ok_or(Error::None)?;
@@ -67,5 +71,31 @@ impl Song {
         let url = self.raw_url().await?;
         let title = self.title().await?;
         Ok(FinataData::new(self.url, vec![(url, Format::Audio)], HEADERS.clone(), Some(title)))
+impl List {
+    pub const fn new(url: Url) -> Self {
+        Self { url }
+    }
+    fn id(&self) -> Result<&str, Error> {
+        self.url
+            .fragment()
+            .map(|s| s.trim_start_matches("/playlist?id=").trim_end_matches('/'))
+            .ok_or(Error::invalid_input_url(&self.url))
+    }
+    pub async fn extract(self) -> Result<FinataData, Error> {
+        let id = self.id()?;
+        let url_info: Value = CLIENT.post(PLAYLIST_DETAIL_API)
+            .query(&[("id", id)])
+            .headers(HEADERS.clone())
+            .send().await?
+            .json().await?;
+        let track_ids = url_info["playlist"]["trackIds"].as_array().ok_or(Error::None)?;
+        let mut songs = Vec::with_capacity(track_ids.len());
+        for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) { //skip invalid value
+            let song_url = format!("https://music.163.com/#/song?id={}", track_id);
+            let raw_url = Song::new(Url::parse(&song_url).unwrap()).raw_url().await?;
+            songs.push((raw_url, Format::Audio));
+        }
+        let name = value_to_string!(url_info["playlist"]["name"]);
+        Ok(FinataData::new(self.url, songs, HEADERS.clone(), name))
     }
 }
