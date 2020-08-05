@@ -98,15 +98,20 @@ impl List {
             .json().await?;
         let track_ids = url_info["playlist"]["trackIds"].as_array().ok_or(Error::None)?;
         let mut songs = Vec::with_capacity(track_ids.len());
+        let mut errs = Error::with_errors(Vec::new());
         for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) { //skip invalid value
             let song_url = format!("https://music.163.com/#/song?id={}", track_id);
-            let raw_url = match Song::new(Url::parse(&song_url).unwrap()).raw_url().await {
-                Ok(r) => r,
-                Err(Error::PermissionDenied(_)) => continue, // skip if a vip song is met
-                Err(e) => return Err(e)
+            match Song::new(Url::parse(&song_url).unwrap()).raw_url().await {
+                Ok(raw_url) => songs.push((raw_url, Format::Audio)),
+                Err(e) => errs.push(e),
             };
-            songs.push((raw_url, Format::Audio));
         }
+        match errs {
+            Error::Errors(ref err) => if err.iter().any(|e| !matches!(e, Error::PermissionDenied(_))) {
+                return Err(errs);
+            },
+            _ => unreachable!(),
+        };
         let name = value_to_string!(url_info["playlist"]["name"]);
         Ok(FinataData::new(self.url, songs, HEADERS.clone(), name))
     }
