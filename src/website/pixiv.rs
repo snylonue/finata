@@ -33,16 +33,14 @@ impl Pixiv {
             .ok_or(Error::invalid_input_url(&self.url))
     }
     pub async fn extract(self) -> Result<FinataData, Error> {
-        let pid = self.pid()?;
-        let data: Value = CLIENT.get(IMAGE_API.join(pid)?)
-            .send().await?
-            .json().await?;
-        let url = data["body"]["urls"]["original"].as_str().ok_or(Error::None)?;
+        let url = self.url.clone();
+        let data = self.meta_json().await?;
+        let raw_url = data["body"]["urls"]["original"].as_str().ok_or(Error::None)?;
         let title = value_to_string!(data["body"]["title"]);
         Ok(
             FinataData::new(
-                self.url,
-                vec![(url.parse()?, Format::Image)],
+                url,
+                vec![(raw_url.parse()?, Format::Image)],
                 HEADERS.clone(),
                 title
             )
@@ -65,5 +63,12 @@ impl Pixiv {
                 None
             )
         )
+    }
+    pub async fn meta_json(self) -> Result<Value, Error> {
+        let pid = self.pid()?;
+        let data = CLIENT.get(IMAGE_API.join(pid)?)
+            .send().await?
+            .json().await?;
+        Ok(data)
     }
 }
