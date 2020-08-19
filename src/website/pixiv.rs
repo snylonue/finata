@@ -39,6 +39,31 @@ impl Pixiv {
             .json().await?;
         let url = data["body"]["urls"]["original"].as_str().ok_or(Error::None)?;
         let title = value_to_string!(data["body"]["title"]);
-        Ok(FinataData::new(self.url, vec![(url.parse()?, Format::Image)], HEADERS.clone(), title))
+        Ok(
+            FinataData::new(
+                self.url,
+                vec![(url.parse()?, Format::Image)],
+                HEADERS.clone(),
+                title
+            )
+        )
+    }
+    pub async fn meta(self) -> Result<String, Error> {
+        let pid = self.pid()?;
+        let data = CLIENT.get(IMAGE_API.join(pid)?)
+            .send().await?
+            .text().await?;
+        Ok(data)
+    }
+    pub fn meta_url(&self) -> Result<FinataData, Error> {
+        let pid = self.pid()?;
+        Ok(
+            FinataData::new(
+                self.url.clone(),
+                vec![(IMAGE_API.join(pid)?, Format::Text)],
+                HEADERS.clone(),
+                None
+            )
+        )
     }
 }
