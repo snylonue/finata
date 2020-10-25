@@ -32,6 +32,10 @@ impl Song {
     pub const fn new(url: Url) -> Self {
         Self { url }
     }
+    fn from_id(id: u64) -> Self {
+        let url = format!("https://music.163.com/#/song?id={}", id);
+        Song::new(Url::parse(&url).unwrap())
+    }
     fn id(&self) -> Result<&str, Error> {
         self.url
             .fragment()
@@ -100,8 +104,7 @@ impl List {
         let mut songs = Vec::with_capacity(track_ids.len());
         let mut errs = Error::with_errors(Vec::new());
         for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) { //skip invalid value
-            let song_url = format!("https://music.163.com/#/song?id={}", track_id);
-            match Song::new(Url::parse(&song_url).unwrap()).raw_url().await {
+            match Song::from_id(track_id).raw_url().await {
                 Ok(raw_url) => songs.push((raw_url, Format::Audio)),
                 Err(e) => errs.push(e),
             };
