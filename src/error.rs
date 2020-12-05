@@ -1,6 +1,6 @@
 use reqwest;
-use thiserror::Error;
 use std::mem::replace;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {

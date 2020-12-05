@@ -1,13 +1,13 @@
-use reqwest::Url;
-use reqwest::header;
-use lazy_static::lazy_static;
-use serde_json::Value;
-use crate::FinataData;
-use crate::Format;
 use crate::error::Error;
-use crate::value_to_string;
 use crate::utils;
 use crate::utils::CLIENT;
+use crate::value_to_string;
+use crate::FinataData;
+use crate::Format;
+use lazy_static::lazy_static;
+use reqwest::header;
+use reqwest::Url;
+use serde_json::Value;
 
 lazy_static! {
     static ref HEADERS: header::HeaderMap = crate::hdmap! {
@@ -18,7 +18,7 @@ lazy_static! {
 }
 
 pub struct Pixiv {
-    url: Url
+    url: Url,
 }
 
 impl Pixiv {
@@ -35,40 +35,44 @@ impl Pixiv {
     pub async fn extract(self) -> Result<FinataData, Error> {
         let url = self.url.clone();
         let data = self.meta_json().await?;
-        let raw_url = data["body"]["urls"]["original"].as_str().ok_or(Error::None)?;
+        let raw_url = data["body"]["urls"]["original"]
+            .as_str()
+            .ok_or(Error::None)?;
         let title = value_to_string!(data["body"]["title"]);
-        Ok(
-            FinataData::new(
-                url,
-                vec![(raw_url.parse()?, Format::Image)],
-                HEADERS.clone(),
-                title
-            )
-        )
+        Ok(FinataData::new(
+            url,
+            vec![(raw_url.parse()?, Format::Image)],
+            HEADERS.clone(),
+            title,
+        ))
     }
     pub async fn meta(self) -> Result<String, Error> {
         let pid = self.pid()?;
-        let data = CLIENT.get(IMAGE_API.join(pid)?)
-            .send().await?
-            .text().await?;
+        let data = CLIENT
+            .get(IMAGE_API.join(pid)?)
+            .send()
+            .await?
+            .text()
+            .await?;
         Ok(data)
     }
     pub fn meta_url(&self) -> Result<FinataData, Error> {
         let pid = self.pid()?;
-        Ok(
-            FinataData::new(
-                self.url.clone(),
-                vec![(IMAGE_API.join(pid)?, Format::Text)],
-                HEADERS.clone(),
-                None
-            )
-        )
+        Ok(FinataData::new(
+            self.url.clone(),
+            vec![(IMAGE_API.join(pid)?, Format::Text)],
+            HEADERS.clone(),
+            None,
+        ))
     }
     pub async fn meta_json(self) -> Result<Value, Error> {
         let pid = self.pid()?;
-        let data = CLIENT.get(IMAGE_API.join(pid)?)
-            .send().await?
-            .json().await?;
+        let data = CLIENT
+            .get(IMAGE_API.join(pid)?)
+            .send()
+            .await?
+            .json()
+            .await?;
         Ok(data)
     }
 }

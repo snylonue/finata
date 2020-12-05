@@ -1,9 +1,9 @@
-pub mod website;
 pub mod error;
 pub mod utils;
+pub mod website;
 
-use reqwest::Url;
 use reqwest::header::HeaderMap;
+use reqwest::Url;
 
 #[derive(Debug, PartialEq)]
 pub enum Format {
@@ -21,7 +21,17 @@ pub struct FinataData {
 }
 
 impl FinataData {
-    pub const fn new(url: Url, raw_url: Vec<(Url, Format)>, header: HeaderMap, title: Option<String>) -> Self {
-        Self { url, raw_url, header, title }
+    pub const fn new(
+        url: Url,
+        raw_url: Vec<(Url, Format)>,
+        header: HeaderMap,
+        title: Option<String>,
+    ) -> Self {
+        Self {
+            url,
+            raw_url,
+            header,
+            title,
+        }
     }
 }
