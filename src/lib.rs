@@ -2,8 +2,18 @@ pub mod error;
 pub mod utils;
 pub mod website;
 
+pub use crate::error::Error;
+use async_trait::async_trait;
 use reqwest::header::HeaderMap;
 use reqwest::Url;
+
+#[async_trait]
+pub trait Extract {
+    // type Iter: Iterator<Item = Result<Finata, Error>>;
+
+    async fn extract(&mut self) -> Box<dyn Iterator<Item = Result<Finata, Error>>>;
+    fn header(&self) -> HeaderMap;
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Format {
@@ -13,24 +23,19 @@ pub enum Format {
     Image,
 }
 #[derive(Debug, PartialEq)]
-pub struct FinataData {
+pub struct Finata {
     pub url: Url,
-    pub raw_url: Vec<(Url, Format)>,
-    pub header: HeaderMap,
+    pub raw: Url,
+    pub format: Format,
     pub title: Option<String>,
 }
 
-impl FinataData {
-    pub const fn new(
-        url: Url,
-        raw_url: Vec<(Url, Format)>,
-        header: HeaderMap,
-        title: Option<String>,
-    ) -> Self {
+impl Finata {
+    pub const fn new(url: Url, raw: Url, format: Format, title: Option<String>) -> Self {
         Self {
             url,
-            raw_url,
-            header,
+            raw,
+            format,
             title,
         }
     }
