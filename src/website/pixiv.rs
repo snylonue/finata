@@ -1,18 +1,15 @@
-use crate::utils;
-use crate::utils::CLIENT;
-use crate::value_to_string;
-use crate::Extract;
-use crate::Finata;
-use crate::Format;
-use lazy_static::lazy_static;
-use reqwest::header;
-use reqwest::Client;
-use reqwest::Url;
-use serde_json::Value;
-use snafu::OptionExt;
+use reqwest::{Client, header};
+use crate::{Error, Finata, FinataError};
+use url::Url;
+use std::convert::TryInto;
+use crate::NetWorkError;
 use snafu::ResultExt;
-use snafu::Snafu;
-use std::iter::once;
+use snafu::OptionExt;
+use crate::utils;
+use crate::Extract;
+// use crate::
+use serde_json::Value;
+use lazy_static::lazy_static;
 
 lazy_static! {
     static ref HEADERS: header::HeaderMap = crate::hdmap! {
@@ -22,97 +19,61 @@ lazy_static! {
     static ref IMAGE_API: Url = Url::parse("https://www.pixiv.net/ajax/illust/").unwrap();
 }
 
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("network error: {}", source))]
-    NetWorkError {
-        source: reqwest::Error,
-    },
-    #[snafu(display("invalid url `{}`", url))]
-    InvalidUrl {
-        url: Url,
-    },
-    ParseUrlError {
-        source: url::ParseError,
-    },
-    /// failed to extract infomation needed
-    InvalidResponse,
-}
-
 pub struct Pixiv {
-    url: Url,
     client: Client,
-    data: Option<Value>,
+    pid: String,
 }
 
 impl Pixiv {
-    pub fn new(url: Url) -> Self {
-        Self::with_client(url, CLIENT.clone())
+    pub fn new(s: impl TryInto<Url, Error=url::ParseError>) -> Result<Self, Error> {
+        let url: Url = s.try_into()?;
+        let pid = url.path_segments().ok_or(Error::InvalidUrl { url: url.to_owned() })?
+            .next_back()
+            .ok_or(Error::InvalidUrl { url: url.to_owned() })?
+            .to_owned();
+        Ok(Self::with_pid(pid))
     }
-    pub fn with_client(url: Url, client: Client) -> Self {
-        Self {
-            url,
-            client,
-            data: None,
-        }
+    pub fn with_pid(pid: String) -> Self {
+        Self::with_client(utils::CLIENT.clone(), pid)
     }
-    fn pid(&self) -> Result<&str, Error> {
-        let pid = self.url.path_segments().map(|sp| sp.last()).flatten();
-        snafu::ensure!(
-            pid.is_some(),
-            InvalidUrl {
-                url: self.url.clone()
-            }
-        );
-        Ok(pid.unwrap())
+    pub fn with_client(client: Client, pid: String) -> Self {
+        Self { client, pid }
     }
-    pub async fn meta_json(&mut self) -> Result<&Value, Error> {
-        match self.data {
-            Some(ref v) => Ok(v),
-            None => {
-                let pid = self.pid()?;
-                let data = self
-                    .client
-                    .get(IMAGE_API.join(pid).unwrap())
-                    .send()
-                    .await
-                    .context(NetWorkError)?
-                    .json()
-                    .await
-                    .context(NetWorkError)?;
-                self.data.replace(data);
-                Ok(self.data.as_ref().unwrap())
-            }
-        }
-    }
-    async fn extract(&mut self) -> Result<Finata, Error> {
-        let url = self.url.clone();
-        let data = self.meta_json().await?;
-        let raw_url = data["body"]["urls"]["original"]
-            .as_str()
-            .context(InvalidResponse)?;
-        let title = value_to_string!(data["body"]["title"]);
-        Ok(Finata::new(
-            url,
-            raw_url.parse().context(ParseUrlError)?,
-            Format::Image,
-            title,
-        ))
-    }
-    pub fn meta_url(&self) -> Result<Url, Error> {
-        let pid = self.pid()?;
-        Ok(IMAGE_API.join(pid).unwrap())
+    async fn meta_json(&self) -> Result<Value, Error> {
+        let url = IMAGE_API.join(&format!("{}/pages", self.pid)).unwrap();
+        dbg!(&url);
+        self
+            .client
+            .get(url.clone())
+            .send()
+            .await
+            .context(NetWorkError { url: url.clone() })?
+            .json()
+            .await
+            .context(NetWorkError { url: url.clone() })
     }
 }
+
+use std::iter::once;
+
 #[async_trait::async_trait]
 impl Extract for Pixiv {
-    async fn extract(
-        &mut self,
-    ) -> Box<dyn Iterator<Item = Result<crate::Finata, crate::error::Error>>> {
-        Box::new(once(self.extract().await.map_err(Into::into)))
-    }
-
-    fn header(&self) -> header::HeaderMap {
-        HEADERS.clone()
+    async fn extract(&mut self) -> Box<dyn Iterator<Item=Result<crate::Finata, crate::FinataError>>> {
+        let data = self.meta_json().await.unwrap();
+        println!("{}", serde_json::to_string_pretty(&data).unwrap());
+        match data["body"].as_array() {
+            None => return Box::new(once(crate::InValidResponse { resp: data.clone() }.fail().map_err(Into::into))),
+            Some(arr) => {
+               let it = arr.clone().into_iter().map(move |v| {
+                    let url = v["urls"]["original"].as_str();
+                    match url.map(|u| Url::parse(u)) {
+                        Some(url) => url.map_err(Error::from).map_err(FinataError::from).map(|raw| Finata { raw, title: "".to_string(), format: crate::Format::Image }),
+                        None => crate::InValidResponse { resp: data.clone() }.fail().map_err(Into::into)
+                    }
+                });
+                return Box::new(it);
+            }
+        };
+        todo!()
     }
 }

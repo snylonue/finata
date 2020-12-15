@@ -1,18 +1,44 @@
-pub mod error;
-pub mod utils;
+use url::Url;
+
 pub mod website;
+pub mod utils;
+pub mod error;
 
-pub use crate::error::Error;
-use async_trait::async_trait;
-use reqwest::header::HeaderMap;
-use reqwest::Url;
+use snafu::Snafu;
+use serde_json::Value;
 
-#[async_trait]
+#[derive(Debug, Snafu)]
+#[snafu(visibility = "pub")]
+pub enum Error {
+    #[snafu(context(false))]
+    ParseUrlError { source: url::ParseError },
+    InvalidUrl { url: Url },
+    InvalidResponse { resp: Value },
+    #[snafu(display("Fails to fetch `{}`: {}", url, source))]
+    NetworkError {
+        url: Url,
+        source: reqwest::Error,
+    }
+}
+
+pub type NetWorkError<T> = NetworkError<T>;
+pub type InValidUrl<T> = InvalidUrl<T>;
+pub type InValidResponse<T> = InvalidResponse<T>;
+
+#[derive(Debug, Snafu)]
+pub struct FinataError {
+    kind: Error,
+}
+
+impl From<Error> for FinataError {
+    fn from(_: Error) -> Self {
+        todo!()
+    }
+}
+
+#[async_trait::async_trait]
 pub trait Extract {
-    // type Iter: Iterator<Item = Result<Finata, Error>>;
-
-    async fn extract(&mut self) -> Box<dyn Iterator<Item = Result<Finata, Error>>>;
-    fn header(&self) -> HeaderMap;
+    async fn extract(&mut self) -> Box<dyn Iterator<Item=Result<Finata, FinataError>>>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -24,19 +50,10 @@ pub enum Format {
 }
 #[derive(Debug, PartialEq)]
 pub struct Finata {
-    pub url: Url,
-    pub raw: Url,
-    pub format: Format,
-    pub title: Option<String>,
+    raw: Url,
+    format: Format,
+    title: String,
 }
 
 impl Finata {
-    pub const fn new(url: Url, raw: Url, format: Format, title: Option<String>) -> Self {
-        Self {
-            url,
-            raw,
-            format,
-            title,
-        }
-    }
 }
