@@ -1,15 +1,16 @@
-use reqwest::{Client, header};
-use crate::{Error, Finata, FinataError};
-use url::Url;
-use std::convert::TryInto;
-use crate::NetWorkError;
-use snafu::ResultExt;
-use snafu::OptionExt;
-use crate::utils;
 use crate::Extract;
-// use crate::
-use serde_json::Value;
+use crate::NetworkError;
+use crate::InvalidResponse;
+use crate::{utils, Format};
+use crate::{Error, Finata};
 use lazy_static::lazy_static;
+use reqwest::{header, Client};
+use serde_json::Value;
+use snafu::{ResultExt};
+use std::convert::TryInto;
+use url::Url;
+use std::iter::once;
+
 
 lazy_static! {
     static ref HEADERS: header::HeaderMap = crate::hdmap! {
@@ -19,17 +20,29 @@ lazy_static! {
     static ref IMAGE_API: Url = Url::parse("https://www.pixiv.net/ajax/illust/").unwrap();
 }
 
+#[derive(Debug)]
 pub struct Pixiv {
     client: Client,
     pid: String,
 }
 
+#[derive(Debug)]
+pub struct Iter {
+    pub(crate) data: std::vec::IntoIter<Value>,
+}
+
 impl Pixiv {
-    pub fn new(s: impl TryInto<Url, Error=url::ParseError>) -> Result<Self, Error> {
+    pub fn new(s: impl TryInto<Url, Error = url::ParseError>) -> Result<Self, Error> {
         let url: Url = s.try_into()?;
-        let pid = url.path_segments().ok_or(Error::InvalidUrl { url: url.to_owned() })?
+        let pid = url
+            .path_segments()
+            .ok_or(Error::InvalidUrl {
+                url: url.to_owned(),
+            })?
             .next_back()
-            .ok_or(Error::InvalidUrl { url: url.to_owned() })?
+            .ok_or(Error::InvalidUrl {
+                url: url.to_owned(),
+            })?
             .to_owned();
         Ok(Self::with_pid(pid))
     }
@@ -41,39 +54,48 @@ impl Pixiv {
     }
     async fn meta_json(&self) -> Result<Value, Error> {
         let url = IMAGE_API.join(&format!("{}/pages", self.pid)).unwrap();
-        dbg!(&url);
-        self
-            .client
+        self.client
             .get(url.clone())
             .send()
             .await
-            .context(NetWorkError { url: url.clone() })?
+            .context(NetworkError { url: url.clone() })?
             .json()
             .await
-            .context(NetWorkError { url: url.clone() })
+            .context(NetworkError { url: url.clone() })
     }
 }
 
-use std::iter::once;
 
 #[async_trait::async_trait]
 impl Extract for Pixiv {
-    async fn extract(&mut self) -> Box<dyn Iterator<Item=Result<crate::Finata, crate::FinataError>>> {
+    async fn extract(
+        &mut self,
+    ) -> Box<dyn Iterator<Item = Result<crate::Finata, crate::Error>>> {
         let data = self.meta_json().await.unwrap();
-        println!("{}", serde_json::to_string_pretty(&data).unwrap());
         match data["body"].as_array() {
-            None => return Box::new(once(crate::InValidResponse { resp: data.clone() }.fail().map_err(Into::into))),
+            None => Box::new(once(
+                InvalidResponse { resp: data.clone() }
+                    .fail()
+            )),
             Some(arr) => {
-               let it = arr.clone().into_iter().map(move |v| {
+                let it = arr.clone().into_iter().map(move |v| {
                     let url = v["urls"]["original"].as_str();
                     match url.map(|u| Url::parse(u)) {
-                        Some(url) => url.map_err(Error::from).map_err(FinataError::from).map(|raw| Finata { raw, title: "".to_string(), format: crate::Format::Image }),
-                        None => crate::InValidResponse { resp: data.clone() }.fail().map_err(Into::into)
+                        Some(url) => {
+                            url.map_err(Error::from)
+                                .map(|raw| Finata {
+                                    raw,
+                                    title: "".to_string(),
+                                    format: Format::Image,
+                                })
+                        }
+                        None => InvalidResponse { resp: data.clone() }
+                            .fail()
+                            .map_err(Into::into),
                     }
                 });
-                return Box::new(it);
+                Box::new(it)
             }
-        };
-        todo!()
+        }
     }
 }
