@@ -2,8 +2,6 @@ use serde_json::Value;
 use snafu::Snafu;
 use url::Url;
 
-pub use NetworkError as a;
-
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub")]
 pub enum Error {
@@ -23,8 +21,6 @@ pub enum Error {
         source: reqwest::Error,
     },
 }
-
-
 
 #[derive(Debug, Snafu)]
 pub struct FinataError {

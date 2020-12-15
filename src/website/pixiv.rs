@@ -1,16 +1,15 @@
 use crate::Extract;
-use crate::NetworkError;
 use crate::InvalidResponse;
+use crate::NetworkError;
 use crate::{utils, Format};
 use crate::{Error, Finata};
 use lazy_static::lazy_static;
 use reqwest::{header, Client};
 use serde_json::Value;
-use snafu::{ResultExt};
+use snafu::ResultExt;
 use std::convert::TryInto;
-use url::Url;
 use std::iter::once;
-
+use url::Url;
 
 lazy_static! {
     static ref HEADERS: header::HeaderMap = crate::hdmap! {
@@ -24,11 +23,6 @@ lazy_static! {
 pub struct Pixiv {
     client: Client,
     pid: String,
-}
-
-#[derive(Debug)]
-pub struct Iter {
-    pub(crate) data: std::vec::IntoIter<Value>,
 }
 
 impl Pixiv {
@@ -52,8 +46,19 @@ impl Pixiv {
     pub fn with_client(client: Client, pid: String) -> Self {
         Self { client, pid }
     }
-    async fn meta_json(&self) -> Result<Value, Error> {
+    async fn raw_url_json(&self) -> Result<Value, Error> {
         let url = IMAGE_API.join(&format!("{}/pages", self.pid)).unwrap();
+        self.client
+            .get(url.clone())
+            .send()
+            .await
+            .context(NetworkError { url: url.clone() })?
+            .json()
+            .await
+            .context(NetworkError { url: url.clone() })
+    }
+    async fn meta_json(&self) -> Result<Value, Error> {
+        let url = IMAGE_API.join(&self.pid).unwrap();
         self.client
             .get(url.clone())
             .send()
@@ -65,30 +70,28 @@ impl Pixiv {
     }
 }
 
-
 #[async_trait::async_trait]
 impl Extract for Pixiv {
-    async fn extract(
-        &mut self,
-    ) -> Box<dyn Iterator<Item = Result<crate::Finata, crate::Error>>> {
-        let data = self.meta_json().await.unwrap();
+    async fn extract(&mut self) -> Box<dyn Iterator<Item = Result<crate::Finata, crate::Error>>> {
+        let data = match self.raw_url_json().await {
+            Ok(data) => data,
+            Err(e) => return Box::new(once(Err(e))),
+        };
+        let title = self.meta_json().await.unwrap()["body"]["title"]
+            .as_str()
+            .unwrap_or("")
+            .to_owned();
         match data["body"].as_array() {
-            None => Box::new(once(
-                InvalidResponse { resp: data.clone() }
-                    .fail()
-            )),
+            None => Box::new(once(InvalidResponse { resp: data.clone() }.fail())),
             Some(arr) => {
                 let it = arr.clone().into_iter().map(move |v| {
                     let url = v["urls"]["original"].as_str();
                     match url.map(|u| Url::parse(u)) {
-                        Some(url) => {
-                            url.map_err(Error::from)
-                                .map(|raw| Finata {
-                                    raw,
-                                    title: "".to_string(),
-                                    format: Format::Image,
-                                })
-                        }
+                        Some(url) => url.map_err(Error::from).map(|raw| Finata {
+                            raw,
+                            title: title.clone(),
+                            format: Format::Image,
+                        }),
                         None => InvalidResponse { resp: data.clone() }
                             .fail()
                             .map_err(Into::into),
