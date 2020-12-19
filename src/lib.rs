@@ -6,9 +6,11 @@ pub mod website;
 
 pub use crate::error::*;
 
+pub type FinaResult = Result<Box<dyn Iterator<Item = Result<Finata, Error>>>, Error>;
+
 #[async_trait::async_trait]
 pub trait Extract {
-    async fn extract(&mut self) -> Box<dyn Iterator<Item = Result<Finata, Error>>>;
+    async fn extract(&mut self) -> Result<Box<dyn Iterator<Item = Result<Finata, Error>>>, Error>;
 }
 
 #[derive(Debug, PartialEq)]

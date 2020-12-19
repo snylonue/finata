@@ -5,7 +5,6 @@ use lazy_static::lazy_static;
 use reqwest::{header, Client};
 use serde_json::Value;
 use snafu::ResultExt;
-use std::iter::once;
 use url::Url;
 
 lazy_static! {
@@ -74,30 +73,31 @@ impl Pixiv {
             _ => err::InvalidResponse { resp: data }.fail(),
         }
     }
+    async fn title(&self) -> Result<String, Error> {
+        let data = self.meta_json().await?;
+        match data["body"]["title"] {
+            Value::String(ref title) => Ok(title.to_owned()),
+            _ => err::InvalidResponse { resp: data }.fail(),
+        }
+    }
 }
 
 #[async_trait::async_trait]
 impl Extract for Pixiv {
-    async fn extract(&mut self) -> Box<dyn Iterator<Item = Result<crate::Finata, crate::Error>>> {
-        let title = match self.meta_json().await {
-            Ok(resp) => resp["body"]["title"].as_str().unwrap_or("").to_owned(),
-            Err(e) => return Box::new(once(Err(e))),
-        };
-        let urls = match self.raw_urls().await {
-            Ok(urls) => urls,
-            Err(e) => return Box::new(once(Err(e))),
-        };
+    async fn extract(&mut self) -> crate::FinaResult {
+        let title = self.title().await?;
+        let urls = self.raw_urls().await?;
         let it = urls.into_iter().map(move |v| {
             let url_data = &v["urls"]["original"];
             match url_data {
                 Value::String(ref url) => Url::parse(url).map_err(Error::from).map(|raw| Finata {
                     raw,
-                    title: title.clone(),
+                    title: title.to_owned(),
                     format: Format::Image,
                 }),
                 _ => err::InvalidResponse { resp: v }.fail(),
             }
         });
-        Box::new(it)
+        Ok(Box::new(it))
     }
 }
