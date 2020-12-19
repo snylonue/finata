@@ -20,6 +20,10 @@ pub enum Error {
         url: Url,
         source: reqwest::Error,
     },
+    #[snafu(context(false))]
+    ParseJsonError {
+        source: reqwest::Error,
+    },
 }
 
 #[derive(Debug, Snafu)]
