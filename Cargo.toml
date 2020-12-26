@@ -19,4 +19,4 @@ url = "2"
 snafu = "0.6.10"
 # thiserror = "1"
 async-trait = "0.1.42"
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "0.2", features = ["macros"] }futures = "0.3"

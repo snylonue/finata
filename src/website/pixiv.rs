@@ -84,6 +84,6 @@ impl Extract for Pixiv {
                 _ => err::InvalidResponse { resp: v }.fail(),
             }
         });
-        Ok(Box::new(it))
+        Ok(Box::new(futures::stream::iter(it)))
     }
 }
