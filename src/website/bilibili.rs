@@ -1,11 +1,9 @@
-use crate::error as err;
 use crate::utils;
-use crate::Extract;
-use crate::{Error, Finata};
+use crate::utils::Client;
+use crate::{Error, Extract, Finata};
 use lazy_static::lazy_static;
-use reqwest::{header, Client};
+use reqwest::header;
 use serde_json::Value;
-use snafu::ResultExt;
 use url::Url;
 
 lazy_static! {
@@ -13,9 +11,9 @@ lazy_static! {
         header::USER_AGENT => utils::UA.clone(),
         header::REFERER => "https://www.bilibili.com",
     };
-    // add ?bvid={} or ?aid={}
-    // add cid={}, qn={} and avid/bvid={}
+    /// add ?bvid={} or ?aid={}
     static ref CID_API: Url = Url::parse("https://api.bilibili.com/x/player/pagelist").unwrap();
+    /// add ?cid={}&qn={}&avid={} or ?cid={}&qn={}&bvid={}
     static ref VIDEO_API: Url = Url::parse("https://api.bilibili.com/x/player/playurl").unwrap();
 }
 
@@ -56,7 +54,7 @@ impl Bilibili {
         Ok(Self::with_id(id))
     }
     pub fn with_id(id: String) -> Self {
-        Self::with_client(utils::CLIENT.clone(), id)
+        Self::with_client(Client::with_header(HEADERS.clone()), id)
     }
     pub fn with_client(client: Client, id: String) -> Self {
         Self {
@@ -77,14 +75,7 @@ impl Bilibili {
                 url
             }
         };
-        Ok(self
-            .client
-            .get(url.clone())
-            .send()
-            .await
-            .context(err::NetworkError { url: url.clone() })?
-            .json()
-            .await?)
+        self.client.send_json_request(url).await
     }
 }
 

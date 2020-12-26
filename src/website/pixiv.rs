@@ -1,10 +1,10 @@
+use crate::utils::Client;
 use crate::Extract;
 use crate::{error as err, utils, Format};
 use crate::{Error, Finata};
 use lazy_static::lazy_static;
-use reqwest::{header, Client};
+use reqwest::header;
 use serde_json::Value;
-use snafu::ResultExt;
 use url::Url;
 
 lazy_static! {
@@ -37,33 +37,19 @@ impl Pixiv {
         Ok(Self::with_pid(pid))
     }
     pub fn with_pid(pid: String) -> Self {
-        Self::with_client(utils::CLIENT.clone(), pid)
+        Self::with_client(Client::with_header(HEADERS.clone()), pid)
     }
     pub fn with_client(client: Client, pid: String) -> Self {
         Self { client, pid }
     }
     async fn raw_url_json(&self) -> Result<Value, Error> {
         let url = IMAGE_API.join(&format!("{}/pages", self.pid)).unwrap();
-        let data = self
-            .client
-            .get(url.clone())
-            .send()
-            .await
-            .context(err::NetworkError { url: url.clone() })?
-            .json()
-            .await?;
+        let data = self.client.send_json_request(url).await?;
         Ok(data)
     }
     async fn meta_json(&self) -> Result<Value, Error> {
         let url = IMAGE_API.join(&self.pid).unwrap();
-        let data = self
-            .client
-            .get(url.clone())
-            .send()
-            .await
-            .context(err::NetworkError { url: url.clone() })?
-            .json()
-            .await?;
+        let data = self.client.send_json_request(url).await?;
         Ok(data)
     }
     async fn raw_urls(&self) -> Result<Vec<Value>, Error> {
