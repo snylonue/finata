@@ -1,4 +1,4 @@
-use crate::error as err;
+use crate::{error as err, value_to_string};
 use crate::{utils, Error, Extract, Finata, Origin};
 use lazy_static::lazy_static;
 use reqwest::header;
@@ -52,6 +52,35 @@ impl Song {
             _ => err::InvalidResponse { resp: url_info }.fail(),
         }
     }
+    pub async fn title(&self) -> Result<String, Error> {
+        let details: Value = self
+            .client
+            .client()
+            .post(SONG_DETIAL_API)
+            .headers(HEADERS.clone())
+            .form(&hmap! { "ids" => format!("[{}]", self.id) })
+            .send()
+            .await?
+            .json()
+            .await?;
+        let error = || {
+            err::InvalidResponse {
+                resp: details.clone(),
+            }
+            .build()
+        };
+        let name = value_to_string!(details["songs"][0]["name"]).ok_or_else(error)?;
+        let arthor = details["songs"][0]["artists"]
+            .as_array()
+            .ok_or_else(error)?
+            .iter()
+            .filter_map(|s| s.as_str())
+            .collect::<Vec<_>>();
+        match arthor.len() {
+            0 => Ok(name),
+            _ => Ok(format!("{} - {}", arthor.join(","), name)),
+        }
+    }
 }
 #[derive(Debug, Clone)]
 pub struct List {
@@ -63,7 +92,7 @@ pub struct List {
 impl Extract for Song {
     async fn extract(&mut self) -> Result<crate::Finata, Error> {
         let url = self.raw_url().await?;
-        let title = String::new(); // todo: implement title parse
+        let title = self.title().await?; // todo: implement title parse
         Ok(Finata::new(
             vec![Origin::new(crate::Format::Audio, url)],
             title,
