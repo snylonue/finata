@@ -43,4 +43,7 @@ impl Finata {
     pub fn new(raws: Vec<Origin>, title: String) -> Self {
         Self { raws, title }
     }
+    pub fn raws(&self) -> &[Origin] {
+        &self.raws
+    }
 }

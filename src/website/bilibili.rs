@@ -92,7 +92,7 @@ impl Bilibili {
             };
             let mut url = VIDEO_API.clone();
             url.set_query(Some(&tmp));
-            dbg!(url)
+            url
         };
         self.client.send_json_request(url).await
     }
