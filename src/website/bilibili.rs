@@ -1,5 +1,6 @@
-use crate::utils;
 use crate::utils::Client;
+use crate::{error as err, Origin};
+use crate::{utils, Format};
 use crate::{Error, Extract, Finata};
 use lazy_static::lazy_static;
 use reqwest::header;
@@ -62,7 +63,7 @@ impl Bilibili {
             id: Id::new(&id),
         }
     }
-    pub async fn playlist_json(&self) -> Result<Value, Error> {
+    pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = match &self.id {
             Id::Av(av) => {
                 let mut url = CID_API.clone();
@@ -75,13 +76,70 @@ impl Bilibili {
                 url
             }
         };
+        let data = self.client.send_json_request(url).await?;
+        match data["data"] {
+            Value::Array(ref cids) => Ok(cids.clone()),
+            _ => err::InvalidResponse { resp: data }.fail(),
+        }
+    }
+    /// Returns dash url
+    pub async fn video_info_json(&self, cid: u64) -> Result<Value, Error> {
+        let url = {
+            let mut tmp = format!("cid={}&fnval=16&", cid);
+            match self.id {
+                Id::Av(ref avid) => tmp.push_str(&format!("avid={}", avid)),
+                Id::Bv(ref bvid) => tmp.push_str(&format!("bvid={}", bvid)),
+            };
+            let mut url = VIDEO_API.clone();
+            url.set_query(Some(&tmp));
+            dbg!(url)
+        };
         self.client.send_json_request(url).await
+    }
+    pub async fn video_dash_urls(&self, cid: u64) -> Result<Value, Error> {
+        let mut data = self.video_info_json(cid).await?;
+        match &mut data["data"]["dash"] {
+            Value::Null => err::InvalidResponse { resp: data }.fail(),
+            res @ _ => Ok(res.take()),
+        }
     }
 }
 
 #[async_trait::async_trait]
 impl Extract for Bilibili {
-    async fn extract(&mut self) -> Result<Box<dyn Iterator<Item = Result<Finata, Error>>>, Error> {
-        todo!()
+    async fn extract(&mut self) -> crate::FinaResult {
+        let cids = self.playlist_json().await?;
+        let cids = cids
+            .into_iter()
+            .map(extract_cid)
+            .collect::<Result<Vec<_>, Error>>()?;
+        let mut urls = Vec::with_capacity(cids.len());
+        for cid in cids {
+            let info = self.video_dash_urls(cid).await?;
+            let video_url = info["video"]
+                .as_array()
+                .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+                .flatten();
+            let audio_url = info["audio"]
+                .as_array()
+                .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+                .flatten();
+            match (video_url, audio_url) {
+                (Some(vurl), Some(aurl)) => urls.extend_from_slice(&[
+                    Origin::new(Format::Video, Url::parse(vurl)?),
+                    Origin::new(Format::Audio, Url::parse(aurl)?),
+                ]),
+                (Some(url), _) => urls.push(Origin::new(Format::Video, Url::parse(url)?)),
+                (_, Some(url)) => urls.push(Origin::new(Format::Audio, Url::parse(url)?)),
+                _ => return err::InvalidResponse { resp: info }.fail(),
+            };
+        }
+        Ok(Finata::new(urls, String::new()))
     }
+}
+
+fn extract_cid(data: Value) -> Result<u64, Error> {
+    data["cid"]
+        .as_u64()
+        .ok_or(err::InvalidResponse { resp: data }.build())
 }

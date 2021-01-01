@@ -43,11 +43,4 @@ impl Finata {
     pub fn new(raws: Vec<Origin>, title: String) -> Self {
         Self { raws, title }
     }
-
-    pub(crate) fn with_single(format: Format, url: Url, title: String) -> Self {
-        Self {
-            raws: vec![Origin::new(format, url)],
-            title,
-        }
-    }
 }
