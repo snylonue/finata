@@ -36,16 +36,13 @@ impl Song {
     pub async fn raw_url(&self) -> Result<Url, Error> {
         let url_info: Value = self
             .client
-            .client()
-            .post(SONG_URL_API)
-            .headers(HEADERS.clone())
-            .form(&hmap! {
-                "ids" => format!("[{}]", self.id),
-                "br" => String::from("999000")
-            })
-            .send()
-            .await?
-            .json()
+            .post_form_json(
+                Url::parse(SONG_URL_API).unwrap(),
+                &hmap! {
+                    "ids" => format!("[{}]", self.id),
+                    "br" => String::from("999000")
+                },
+            )
             .await?;
         match url_info["data"][0]["url"] {
             Value::String(ref url) => Ok(Url::parse(url)?),
@@ -55,13 +52,10 @@ impl Song {
     pub async fn title(&self) -> Result<String, Error> {
         let details: Value = self
             .client
-            .client()
-            .post(SONG_DETIAL_API)
-            .headers(HEADERS.clone())
-            .form(&hmap! { "ids" => format!("[{}]", self.id) })
-            .send()
-            .await?
-            .json()
+            .post_form_json(
+                Url::parse(SONG_DETIAL_API).unwrap(),
+                &hmap! { "ids" => format!("[{}]", self.id) },
+            )
             .await?;
         let error = || {
             err::InvalidResponse {

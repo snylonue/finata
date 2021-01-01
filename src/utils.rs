@@ -1,6 +1,7 @@
 use crate::error as err;
 use lazy_static::lazy_static;
 use reqwest::header::HeaderMap;
+use serde_json::Value;
 use snafu::ResultExt;
 use url::Url;
 
@@ -59,7 +60,7 @@ impl Client {
     pub fn with_header(header: HeaderMap) -> Self {
         Self::with_details(CLIENT.clone(), header)
     }
-    pub async fn send_json_request(&self, url: Url) -> Result<serde_json::Value, err::Error> {
+    pub async fn send_json_request(&self, url: Url) -> Result<Value, err::Error> {
         Ok(self
             .inner
             .get(url.clone())
@@ -72,5 +73,21 @@ impl Client {
     }
     pub fn client(&self) -> &reqwest::Client {
         &self.inner
+    }
+    pub async fn post_form_json<T: serde::Serialize>(
+        &self,
+        url: Url,
+        form: &T,
+    ) -> Result<Value, err::Error> {
+        Ok(self
+            .inner
+            .post(url.clone())
+            .headers(self.header.clone())
+            .form(form)
+            .send()
+            .await
+            .context(err::NetworkError { url })?
+            .json::<Value>()
+            .await?)
     }
 }
