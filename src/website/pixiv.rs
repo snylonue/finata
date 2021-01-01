@@ -1,6 +1,6 @@
-use crate::utils::Client;
 use crate::Extract;
 use crate::{error as err, utils, Format};
+use crate::{utils::Client, Origin};
 use crate::{Error, Finata};
 use lazy_static::lazy_static;
 use reqwest::header;
@@ -73,17 +73,18 @@ impl Extract for Pixiv {
     async fn extract(&mut self) -> crate::FinaResult {
         let title = self.title().await?;
         let urls = self.raw_urls().await?;
-        let it = urls.into_iter().map(move |v| {
-            let url_data = &v["urls"]["original"];
-            match url_data {
-                Value::String(ref url) => Url::parse(url).map_err(Error::from).map(|raw| Finata {
-                    raw,
-                    title: title.to_owned(),
-                    format: Format::Image,
-                }),
-                _ => err::InvalidResponse { resp: v }.fail(),
-            }
-        });
-        Ok(Box::new(futures::stream::iter(it)))
+        let raws = urls
+            .into_iter()
+            .map(move |v| {
+                let url_data = &v["urls"]["original"];
+                match url_data {
+                    Value::String(ref url) => Url::parse(url)
+                        .map_err(Into::into)
+                        .map(|raw| Origin::new(Format::Image, raw)),
+                    _ => err::InvalidResponse { resp: v }.fail(),
+                }
+            })
+            .collect::<Result<_, Error>>()?;
+        Ok(Finata::new(raws, title))
     }
 }

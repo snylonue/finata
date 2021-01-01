@@ -1,5 +1,4 @@
 use url::Url;
-use futures::stream::Stream;
 
 pub mod error;
 pub mod utils;
@@ -7,25 +6,48 @@ pub mod website;
 
 pub use crate::error::*;
 
-pub type FinaResult = Result<Box<dyn Stream<Item = Result<Finata, Error>> + Unpin>, Error>;
+pub type FinaResult = Result<Finata, Error>;
 
 #[async_trait::async_trait]
 pub trait Extract {
-    async fn extract(&mut self) -> Result<Box<dyn Stream<Item = Result<Finata, Error>> + Unpin>, Error>;
+    async fn extract(&mut self) -> Result<Finata, Error>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Format {
     Video,
     Audio,
     Text,
     Image,
 }
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Origin {
+    pub format: Format,
+    pub url: Url,
+}
+
+impl Origin {
+    pub fn new(format: Format, url: Url) -> Self {
+        Self { format, url }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Finata {
-    raw: Url,
-    format: Format,
+    raws: Vec<Origin>,
     title: String,
 }
 
-impl Finata {}
+impl Finata {
+    pub fn new(raws: Vec<Origin>, title: String) -> Self {
+        Self { raws, title }
+    }
+
+    pub(crate) fn with_single(format: Format, url: Url, title: String) -> Self {
+        Self {
+            raws: vec![Origin::new(format, url)],
+            title,
+        }
+    }
+}
