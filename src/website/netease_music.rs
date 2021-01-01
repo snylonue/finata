@@ -27,6 +27,15 @@ pub struct Song {
 }
 
 impl Song {
+    pub fn new(url: Url) -> Result<Self, Error> {
+        let id = url
+            .fragment()
+            .map(|s| s.trim_start_matches("/playlist?id=").trim_end_matches('/'))
+            .ok_or(err::InvalidUrl { url: url.clone() }.build())?;
+        Ok(Self::from_id(
+            id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
+        ))
+    }
     pub fn from_id(id: u64) -> Self {
         Self {
             id,
