@@ -46,4 +46,10 @@ impl Finata {
     pub fn raws(&self) -> &[Origin] {
         &self.raws
     }
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+    pub fn into_title(self) -> String {
+        self.title
+    }
 }
