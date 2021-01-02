@@ -1,4 +1,4 @@
-use crate::{error as err, value_to_string};
+use crate::{error as err, value_to_string, Format};
 use crate::{utils, Error, Extract, Finata, Origin};
 use lazy_static::lazy_static;
 use reqwest::header;
@@ -8,9 +8,7 @@ use url::Url;
 use utils::Client;
 
 const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
-#[allow(dead_code)]
 const SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
-#[allow(dead_code)]
 const PLAYLIST_DETAIL_API: &str = "https://music.163.com/api/v3/playlist/detail";
 
 lazy_static! {
@@ -26,11 +24,12 @@ pub struct Song {
     client: Client,
 }
 
+// todo: refactor
 impl Song {
     pub fn new(url: Url) -> Result<Self, Error> {
         let id = url
             .fragment()
-            .map(|s| s.trim_start_matches("/playlist?id=").trim_end_matches('/'))
+            .map(|s| s.trim_start_matches("/song?id=").trim_end_matches('/'))
             .ok_or(err::InvalidUrl { url: url.clone() }.build())?;
         Ok(Self::from_id(
             id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
@@ -86,19 +85,78 @@ impl Song {
     }
 }
 #[derive(Debug, Clone)]
-pub struct List {
+pub struct PlayList {
     id: u64,
     client: Client,
+    ignore_vip: bool,
+}
+
+impl PlayList {
+    pub fn new(url: Url) -> Result<Self, Error> {
+        let id = url
+            .fragment()
+            .map(|s| s.trim_start_matches("/playlist?id=").trim_end_matches('/'))
+            .ok_or(err::InvalidUrl { url: url.clone() }.build())?;
+        Ok(Self::from_id(
+            id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
+        ))
+    }
+    pub fn from_id(id: u64) -> Self {
+        Self::extracts_vip(id, false)
+    }
+    pub fn extracts_vip(id: u64, vip: bool) -> Self {
+        Self {
+            id,
+            client: Client::with_header(HEADERS.clone()),
+            ignore_vip: !vip,
+        }
+    }
 }
 
 #[async_trait::async_trait]
 impl Extract for Song {
     async fn extract(&mut self) -> Result<crate::Finata, Error> {
         let url = self.raw_url().await?;
-        let title = self.title().await?; // todo: implement title parse
-        Ok(Finata::new(
-            vec![Origin::new(crate::Format::Audio, url)],
-            title,
-        ))
+        let title = self.title().await?;
+        Ok(Finata::new(vec![Origin::new(Format::Audio, url)], title))
+    }
+}
+
+#[async_trait::async_trait]
+impl Extract for PlayList {
+    async fn extract(&mut self) -> Result<Finata, Error> {
+        let url_info: Value = self
+            .client
+            .post_json(
+                Url::parse_with_params(PLAYLIST_DETAIL_API, &[("id", self.id.to_string())])
+                    .unwrap(),
+            )
+            .await?;
+        let error = || {
+            err::InvalidResponse {
+                resp: url_info.clone(),
+            }
+            .build()
+        };
+        let track_ids = url_info["playlist"]["trackIds"]
+            .as_array()
+            .ok_or_else(error)?;
+        let mut songs = Vec::with_capacity(track_ids.len());
+        for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) {
+            // skip invalid id
+            match Song::from_id(track_id).raw_url().await {
+                Ok(raw_url) => songs.push(Origin::new(Format::Audio, raw_url)),
+                Err(e) => match e {
+                    // ignore vip songs
+                    Error::InvalidResponse { ref resp } if resp["data"][0]["code"] == -110 => {}
+                    _ => return Err(e),
+                },
+            };
+        }
+        let name = url_info["playlist"]["name"]
+            .as_str()
+            .unwrap_or("")
+            .to_owned();
+        Ok(Finata::new(songs, name))
     }
 }

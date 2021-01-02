@@ -90,4 +90,15 @@ impl Client {
             .json::<Value>()
             .await?)
     }
+    pub async fn post_json(&self, url: Url) -> Result<Value, err::Error> {
+        Ok(self
+            .inner
+            .post(url.clone())
+            .headers(self.header.clone())
+            .send()
+            .await
+            .context(err::NetworkError { url })?
+            .json::<Value>()
+            .await?)
+    }
 }
