@@ -59,12 +59,10 @@ impl Client {
     pub fn with_header(header: HeaderMap) -> Self {
         Self::with_details(CLIENT.clone(), header)
     }
-    pub fn with_cookie(cookie: &str) -> Result<Self, header::InvalidHeaderValue> {
-        let mut client = Self::new();
-        client
-            .header
+    pub fn push_cookie(&mut self, cookie: &str) -> Result<(), header::InvalidHeaderValue> {
+        self.header
             .append(header::COOKIE, HeaderValue::from_str(cookie)?);
-        Ok(client)
+        Ok(())
     }
     pub async fn send_json_request(&self, url: Url) -> Result<Value, err::Error> {
         Ok(self
