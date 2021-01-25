@@ -41,6 +41,12 @@ impl Song {
     pub fn with_client(client: Client, id: u64) -> Self {
         Self { id, client }
     }
+    pub fn client(&self) -> &Client {
+        &self.client
+    }
+    pub fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
+    }
     pub async fn raw_url(&self) -> Result<Url, Error> {
         let url_info: Value = self
             .client
@@ -105,7 +111,11 @@ impl PlayList {
         Self::extracts_vip(id, false)
     }
     pub fn with_client(client: Client, id: u64, vip: bool) -> Self {
-        Self { id, client, ignore_vip: !vip }
+        Self {
+            id,
+            client,
+            ignore_vip: !vip,
+        }
     }
     pub fn extracts_vip(id: u64, vip: bool) -> Self {
         Self::with_client(Client::with_header(HEADERS.clone()), id, vip)

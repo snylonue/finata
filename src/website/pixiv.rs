@@ -42,6 +42,12 @@ impl Pixiv {
     pub fn with_client(client: Client, pid: String) -> Self {
         Self { client, pid }
     }
+    pub fn client(&self) -> &Client {
+        &self.client
+    }
+    pub fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
+    }
     async fn raw_url_json(&self) -> Result<Value, Error> {
         let url = IMAGE_API.join(&format!("{}/pages", self.pid)).unwrap();
         let data = self.client.send_json_request(url).await?;

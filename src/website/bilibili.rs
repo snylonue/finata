@@ -63,6 +63,12 @@ impl Bilibili {
             id: Id::new(&id),
         }
     }
+    pub fn client(&self) -> &Client {
+        &self.client
+    }
+    pub fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
+    }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = match &self.id {
             Id::Av(av) => {
