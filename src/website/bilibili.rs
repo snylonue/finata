@@ -91,7 +91,7 @@ impl Bilibili {
     /// Returns dash url
     pub async fn video_info_json(&self, cid: u64) -> Result<Value, Error> {
         let url = {
-            let mut tmp = format!("cid={}&fnval=16&", cid);
+            let mut tmp = format!("cid={}&fnval=16&fourk=1&", cid);
             match self.id {
                 Id::Av(ref avid) => tmp.push_str(&format!("avid={}", avid)),
                 Id::Bv(ref bvid) => tmp.push_str(&format!("bvid={}", bvid)),
