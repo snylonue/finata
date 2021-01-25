@@ -31,15 +31,15 @@ impl Song {
             .fragment()
             .map(|s| s.trim_start_matches("/song?id=").trim_end_matches('/'))
             .ok_or(err::InvalidUrl { url: url.clone() }.build())?;
-        Ok(Self::from_id(
+        Ok(Self::with_id(
             id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
         ))
     }
-    pub fn from_id(id: u64) -> Self {
-        Self {
-            id,
-            client: Client::with_header(HEADERS.clone()),
-        }
+    pub fn with_id(id: u64) -> Self {
+        Self::with_client(Client::with_header(HEADERS.clone()), id)
+    }
+    pub fn with_client(client: Client, id: u64) -> Self {
+        Self { id, client }
     }
     pub async fn raw_url(&self) -> Result<Url, Error> {
         let url_info: Value = self
@@ -97,19 +97,18 @@ impl PlayList {
             .fragment()
             .map(|s| s.trim_start_matches("/playlist?id=").trim_end_matches('/'))
             .ok_or(err::InvalidUrl { url: url.clone() }.build())?;
-        Ok(Self::from_id(
+        Ok(Self::with_id(
             id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
         ))
     }
-    pub fn from_id(id: u64) -> Self {
+    pub fn with_id(id: u64) -> Self {
         Self::extracts_vip(id, false)
     }
+    pub fn with_client(client: Client, id: u64, vip: bool) -> Self {
+        Self { id, client, ignore_vip: !vip }
+    }
     pub fn extracts_vip(id: u64, vip: bool) -> Self {
-        Self {
-            id,
-            client: Client::with_header(HEADERS.clone()),
-            ignore_vip: !vip,
-        }
+        Self::with_client(Client::with_header(HEADERS.clone()), id, vip)
     }
 }
 
@@ -144,7 +143,7 @@ impl Extract for PlayList {
         let mut songs = Vec::with_capacity(track_ids.len());
         for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) {
             // skip invalid id
-            match Song::from_id(track_id).raw_url().await {
+            match Song::with_id(track_id).raw_url().await {
                 Ok(raw_url) => songs.push(Origin::new(Format::Audio, raw_url)),
                 Err(e) => match e {
                     // ignore vip songs
