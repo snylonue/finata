@@ -1,6 +1,8 @@
 use crate::error as err;
 use lazy_static::lazy_static;
+use reqwest::header;
 use reqwest::header::HeaderMap;
+use reqwest::header::HeaderValue;
 use serde_json::Value;
 use snafu::ResultExt;
 use url::Url;
@@ -38,7 +40,7 @@ macro_rules! hdmap {
 
 lazy_static! {
     pub static ref CLIENT: reqwest::Client = reqwest::ClientBuilder::new().gzip(true).build().unwrap();
-    pub static ref UA: reqwest::header::HeaderValue = reqwest::header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
+    pub static ref UA: HeaderValue = HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
 }
 
 #[derive(Debug, Clone)]
@@ -52,10 +54,7 @@ impl Client {
         Self { inner, header }
     }
     pub fn new() -> Self {
-        Self::with_details(
-            CLIENT.clone(),
-            hdmap! { reqwest::header::COOKIE => UA.clone() },
-        )
+        Self::with_details(CLIENT.clone(), hdmap! { header::USER_AGENT => UA.clone() })
     }
     pub fn with_header(header: HeaderMap) -> Self {
         Self::with_details(CLIENT.clone(), header)
