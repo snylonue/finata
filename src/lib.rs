@@ -6,11 +6,11 @@ pub mod website;
 
 pub use crate::error::*;
 
-pub type FinaResult = Result<Finata, Error>;
+pub type FinaResult<T = Finata> = Result<T, Error>;
 
 #[async_trait::async_trait]
 pub trait Extract {
-    async fn extract(&mut self) -> Result<Finata, Error>;
+    async fn extract(&mut self) -> FinaResult;
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

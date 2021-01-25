@@ -1,4 +1,4 @@
-use crate::{error as err, value_to_string, Format};
+use crate::{error as err, value_to_string, FinaResult, Format};
 use crate::{utils, Error, Extract, Finata, Origin};
 use lazy_static::lazy_static;
 use reqwest::header;
@@ -115,7 +115,7 @@ impl PlayList {
 
 #[async_trait::async_trait]
 impl Extract for Song {
-    async fn extract(&mut self) -> Result<crate::Finata, Error> {
+    async fn extract(&mut self) -> FinaResult {
         let url = self.raw_url().await?;
         let title = self.title().await?;
         Ok(Finata::new(vec![Origin::new(Format::Audio, url)], title))
@@ -124,7 +124,7 @@ impl Extract for Song {
 
 #[async_trait::async_trait]
 impl Extract for PlayList {
-    async fn extract(&mut self) -> Result<Finata, Error> {
+    async fn extract(&mut self) -> FinaResult {
         let url_info: Value = self
             .client
             .post_json(
