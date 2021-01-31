@@ -18,6 +18,8 @@ lazy_static! {
 const CID_API: &str = "https://api.bilibili.com/x/player/pagelist";
 /// ?cid={}&qn={}&avid={} or ?cid={}&qn={}&bvid={}
 const VIDEO_API: &str = "https://api.bilibili.com/x/player/playurl";
+/// ?bvid={} or ?aid={}
+pub const VIDEO_INFO_API: &str = "https://api.bilibili.com/x/web-interface/view";
 
 #[derive(Debug)]
 pub enum Id {
@@ -101,11 +103,27 @@ impl Bilibili {
             res @ _ => Ok(res.take()),
         }
     }
+    pub async fn video_info_json(&self) -> Result<Value, Error> {
+        let url = match &self.id {
+            Id::Av(av) => format!("{}?aid={}", VIDEO_INFO_API, av),
+            Id::Bv(bv) => format!("{}?bvid={}", VIDEO_API, bv),
+        }
+        .parse()?;
+        self.client.send_json_request(url).await
+    }
+    pub async fn title(&self) -> Result<String, Error> {
+        let info = self.video_info_json().await?;
+        match info["data"]["title"] {
+            Value::String(ref s) => Ok(s.to_owned()),
+            _ => err::InvalidResponse { resp: info }.fail(),
+        }
+    }
 }
 
 #[async_trait::async_trait]
 impl Extract for Bilibili {
     async fn extract(&mut self) -> crate::FinaResult {
+        let title = self.title();
         let cids = self.playlist_json().await?;
         let cids = cids
             .into_iter()
@@ -132,7 +150,7 @@ impl Extract for Bilibili {
                 _ => return err::InvalidResponse { resp: info }.fail(),
             };
         }
-        Ok(Finata::new(urls, String::new()))
+        Ok(Finata::new(urls, title.await?))
     }
 }
 
