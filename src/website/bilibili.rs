@@ -12,11 +12,12 @@ lazy_static! {
         header::USER_AGENT => utils::UA.clone(),
         header::REFERER => "https://www.bilibili.com",
     };
-    /// add ?bvid={} or ?aid={}
-    static ref CID_API: Url = Url::parse("https://api.bilibili.com/x/player/pagelist").unwrap();
-    /// add ?cid={}&qn={}&avid={} or ?cid={}&qn={}&bvid={}
-    static ref VIDEO_API: Url = Url::parse("https://api.bilibili.com/x/player/playurl").unwrap();
 }
+
+/// add ?bvid={} or ?aid={}
+const CID_API: &str = "https://api.bilibili.com/x/player/pagelist";
+/// ?cid={}&qn={}&avid={} or ?cid={}&qn={}&bvid={}
+const VIDEO_API: &str = "https://api.bilibili.com/x/player/playurl";
 
 #[derive(Debug)]
 pub enum Id {
@@ -71,17 +72,10 @@ impl Bilibili {
     }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = match &self.id {
-            Id::Av(av) => {
-                let mut url = CID_API.clone();
-                url.set_query(Some(&format!("aid={}", av)));
-                url
-            }
-            Id::Bv(bv) => {
-                let mut url = CID_API.clone();
-                url.set_query(Some(&format!("bvid={}", bv)));
-                url
-            }
-        };
+            Id::Av(av) => format!("{}?aid={}", CID_API, av),
+            Id::Bv(bv) => format!("{}?bvid={}", CID_API, bv),
+        }
+        .parse()?;
         let data = self.client.send_json_request(url).await?;
         match data["data"] {
             Value::Array(ref cids) => Ok(cids.clone()),
@@ -89,21 +83,19 @@ impl Bilibili {
         }
     }
     /// Returns dash url
-    pub async fn video_info_json(&self, cid: u64) -> Result<Value, Error> {
+    pub async fn video_url_json(&self, cid: u64) -> Result<Value, Error> {
         let url = {
-            let mut tmp = format!("cid={}&fnval=16&fourk=1&", cid);
+            let mut tmp = format!("{}?cid={}&fnval=16&fourk=1&", VIDEO_API, cid);
             match self.id {
                 Id::Av(ref avid) => tmp.push_str(&format!("avid={}", avid)),
                 Id::Bv(ref bvid) => tmp.push_str(&format!("bvid={}", bvid)),
             };
-            let mut url = VIDEO_API.clone();
-            url.set_query(Some(&tmp));
-            url
+            tmp.parse()?
         };
         self.client.send_json_request(url).await
     }
     pub async fn video_dash_urls(&self, cid: u64) -> Result<Value, Error> {
-        let mut data = self.video_info_json(cid).await?;
+        let mut data = self.video_url_json(cid).await?;
         match &mut data["data"]["dash"] {
             Value::Null => err::InvalidResponse { resp: data }.fail(),
             res @ _ => Ok(res.take()),
