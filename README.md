@@ -9,4 +9,7 @@ Currently these sites are supported:
 3. netease music: song and playlist
 
 ## Status
-~~It now has a README.md~~
+~~Yeah, it now has a README.md~~
+
+## Thanks
+**[SocialSisterYi / bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**
