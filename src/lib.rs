@@ -1,19 +1,42 @@
+use lazy_static::lazy_static;
+#[cfg(feature = "sync")]
+use tokio::runtime::Runtime;
 use url::Url;
+#[cfg(feature = "extractor")]
 use utils::Client;
 
 pub mod error;
+#[cfg(feature = "extractor")]
 pub mod utils;
+#[cfg(feature = "extractor")]
 pub mod website;
 
 pub use crate::error::*;
 
 pub type FinaResult<T = Finata> = Result<T, Error>;
 
+lazy_static! {
+    #[cfg(feature = "sync")]
+    static ref RUNTIME: Runtime = Runtime::new().unwrap();
+}
+
+#[cfg(feature = "extractor")]
 #[async_trait::async_trait]
 pub trait Extract {
     async fn extract(&mut self) -> FinaResult;
     fn client(&self) -> &Client;
     fn client_mut(&mut self) -> &mut Client;
+}
+
+pub trait ExtractSync {
+    fn extract_sync(&mut self) -> FinaResult;
+}
+
+#[cfg(all(feature = "extractor", feature = "sync"))]
+impl<T: Extract> ExtractSync for T {
+    fn extract_sync(&mut self) -> FinaResult {
+        RUNTIME.block_on(async { self.extract().await })
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
