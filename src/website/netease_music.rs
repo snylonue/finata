@@ -129,6 +129,12 @@ impl Extract for Song {
         let title = self.title().await?;
         Ok(Finata::new(vec![Origin::new(Format::Audio, url)], title))
     }
+    fn client(&self) -> &Client {
+        &self.client
+    }
+    fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
+    }
 }
 
 #[async_trait::async_trait]
@@ -167,5 +173,11 @@ impl Extract for PlayList {
             .unwrap_or("")
             .to_owned();
         Ok(Finata::new(songs, name))
+    }
+    fn client(&self) -> &Client {
+        &self.client
+    }
+    fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
     }
 }

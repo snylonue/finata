@@ -66,12 +66,6 @@ impl Bilibili {
             id: Id::new(&id),
         }
     }
-    pub fn client(&self) -> &Client {
-        &self.client
-    }
-    pub fn client_mut(&mut self) -> &mut Client {
-        &mut self.client
-    }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = match &self.id {
             Id::Av(av) => format!("{}?aid={}", CID_API, av),
@@ -151,6 +145,12 @@ impl Extract for Bilibili {
             };
         }
         Ok(Finata::new(urls, title.await?))
+    }
+    fn client(&self) -> &Client {
+        &self.client
+    }
+    fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
     }
 }
 

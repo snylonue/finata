@@ -1,4 +1,5 @@
 use url::Url;
+use utils::Client;
 
 pub mod error;
 pub mod utils;
@@ -11,6 +12,8 @@ pub type FinaResult<T = Finata> = Result<T, Error>;
 #[async_trait::async_trait]
 pub trait Extract {
     async fn extract(&mut self) -> FinaResult;
+    fn client(&self) -> &Client;
+    fn client_mut(&mut self) -> &mut Client;
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
