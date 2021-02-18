@@ -144,7 +144,7 @@ impl Extract for Bilibili {
                 _ => return err::InvalidResponse { resp: info }.fail(),
             };
         }
-        Ok(Finata::new(urls, title.await?))
+        Ok(Finata::new(urls, title.await.unwrap_or_default()))
     }
     fn client(&self) -> &Client {
         &self.client
