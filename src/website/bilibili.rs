@@ -31,6 +31,7 @@ pub enum Id {
 pub struct Video {
     client: Client,
     id: Id,
+    page: Option<usize>,
 }
 
 impl Id {
@@ -56,15 +57,19 @@ impl Video {
                 url: url.to_owned(),
             })?
             .to_owned();
-        Ok(Self::with_id(id))
+        let page = url
+            .query_pairs()
+            .find_map(|(key, v)| if key == "p" { v.parse().ok() } else { None });
+        Ok(Self::with_id(id, page))
     }
-    pub fn with_id(id: String) -> Self {
-        Self::with_client(Client::with_header(HEADERS.clone()), id)
+    pub fn with_id(id: String, page: Option<usize>) -> Self {
+        Self::with_client(Client::with_header(HEADERS.clone()), id, page)
     }
-    pub fn with_client(client: Client, id: String) -> Self {
+    pub fn with_client(client: Client, id: String, page: Option<usize>) -> Self {
         Self {
             client,
             id: Id::new(&id),
+            page,
         }
     }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
@@ -113,13 +118,19 @@ impl Video {
             _ => err::InvalidResponse { resp: info }.fail(),
         }
     }
+    async fn current_cid(&self) -> Result<u64, Error> {
+        let playlist = self.playlist_json().await?;
+        match playlist.get(self.page.unwrap_or(1) - 1) {
+            Some(res) => extract_cid(res),
+            _ => err::InvalidResponse { resp: playlist }.fail(),
+        }
+    }
 }
 
 #[async_trait::async_trait]
 impl Extract for Video {
     async fn extract(&mut self) -> crate::FinaResult {
-        let info = self.video_info_json().await?;
-        let cid = extract_cid(&info["data"])?;
+        let cid = self.current_cid().await?;
         let title = self.title().await.unwrap_or_default();
         let mut tracks = Vec::new();
         let info = self.video_dash_urls(cid).await?;
