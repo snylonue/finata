@@ -18,6 +18,9 @@ lazy_static! {
 #[async_trait::async_trait]
 pub trait Extract {
     async fn extract(&mut self) -> FinaResult;
+}
+
+pub trait Config {
     fn client(&self) -> &Client;
     fn client_mut(&mut self) -> &mut Client;
 }
@@ -32,30 +35,36 @@ impl<T: Extract> ExtractSync for T {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Format {
-    Video,
-    Audio,
-    Text,
-    Image,
+#[derive(Debug, PartialEq, Clone)]
+pub enum Track {
+    Video(Url),
+    Audio(Url),
+    Text(Url),
+    Image(Url),
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Origin {
-    pub format: Format,
-    pub url: Url,
-}
-
-impl Origin {
-    pub fn new(format: Format, url: Url) -> Self {
-        Self { format, url }
-    }
+    pub tracks: Vec<Track>,
+    pub title: String,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Finata {
     raws: Vec<Origin>,
     title: String,
+}
+
+impl Origin {
+    pub fn new(tracks: Vec<Track>, title: String) -> Self {
+        Self { tracks, title }
+    }
+    pub fn video(url: Url, title: String) -> Self {
+        Self::new(vec![Track::Video(url)], title)
+    }
+    pub fn audio(url: Url, title: String) -> Self {
+        Self::new(vec![Track::Audio(url)], title)
+    }
 }
 
 impl Finata {
@@ -70,5 +79,8 @@ impl Finata {
     }
     pub fn into_title(self) -> String {
         self.title
+    }
+    pub fn into_parts(self) -> (Vec<Origin>, String) {
+        (self.raws, self.title)
     }
 }

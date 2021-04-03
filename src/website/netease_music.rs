@@ -1,5 +1,6 @@
-use crate::{error as err, value_to_string, FinaResult, Format};
+use crate::{error as err, value_to_string, FinaResult, Track};
 use crate::{utils, Error, Extract, Finata, Origin};
+use crate::Config;
 use lazy_static::lazy_static;
 use reqwest::header;
 use serde_json::Value;
@@ -127,8 +128,11 @@ impl Extract for Song {
     async fn extract(&mut self) -> FinaResult {
         let url = self.raw_url().await?;
         let title = self.title().await?;
-        Ok(Finata::new(vec![Origin::new(Format::Audio, url)], title))
+        Ok(Finata::new(vec![Origin::new(Track::Audio, url)], title))
     }
+}
+
+impl Config for Song {
     fn client(&self) -> &Client {
         &self.client
     }
@@ -160,7 +164,7 @@ impl Extract for PlayList {
         for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) {
             // skip invalid id
             match Song::with_id(track_id).raw_url().await {
-                Ok(raw_url) => songs.push(Origin::new(Format::Audio, raw_url)),
+                Ok(raw_url) => songs.push(Origin::new(Track::Audio, raw_url)),
                 Err(e) => match e {
                     // ignore vip songs
                     Error::InvalidResponse { ref resp } if resp["data"][0]["code"] == -110 => {}
@@ -174,6 +178,9 @@ impl Extract for PlayList {
             .to_owned();
         Ok(Finata::new(songs, name))
     }
+}
+
+impl Config for PlayList {
     fn client(&self) -> &Client {
         &self.client
     }

@@ -1,6 +1,7 @@
 use crate::utils::Client;
+use crate::Config;
 use crate::{error as err, Origin};
-use crate::{utils, Format};
+use crate::{utils, Track};
 use crate::{Error, Extract, Finata};
 use lazy_static::lazy_static;
 use reqwest::header;
@@ -27,7 +28,7 @@ pub enum Id {
     Bv(String),
 }
 
-pub struct Bilibili {
+pub struct Video {
     client: Client,
     id: Id,
 }
@@ -44,7 +45,7 @@ impl Id {
     }
 }
 
-impl Bilibili {
+impl Video {
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s)?;
         let id = url
@@ -115,37 +116,34 @@ impl Bilibili {
 }
 
 #[async_trait::async_trait]
-impl Extract for Bilibili {
+impl Extract for Video {
     async fn extract(&mut self) -> crate::FinaResult {
-        let title = self.title();
-        let cids = self.playlist_json().await?;
-        let cids = cids
-            .into_iter()
-            .map(extract_cid)
-            .collect::<Result<Vec<_>, Error>>()?;
-        let mut urls = Vec::with_capacity(cids.len());
-        for cid in cids {
-            let info = self.video_dash_urls(cid).await?;
-            let video_url = info["video"]
-                .as_array()
-                .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-                .flatten();
-            let audio_url = info["audio"]
-                .as_array()
-                .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-                .flatten();
-            match (video_url, audio_url) {
-                (Some(vurl), Some(aurl)) => urls.extend_from_slice(&[
-                    Origin::new(Format::Video, Url::parse(vurl)?),
-                    Origin::new(Format::Audio, Url::parse(aurl)?),
-                ]),
-                (Some(url), _) => urls.push(Origin::new(Format::Video, Url::parse(url)?)),
-                (_, Some(url)) => urls.push(Origin::new(Format::Audio, Url::parse(url)?)),
-                _ => return err::InvalidResponse { resp: info }.fail(),
-            };
-        }
-        Ok(Finata::new(urls, title.await.unwrap_or_default()))
+        let info = self.video_info_json().await?;
+        let cid = extract_cid(&info["data"])?;
+        let title = self.title().await.unwrap_or_default();
+        let mut tracks = Vec::new();
+        let info = self.video_dash_urls(cid).await?;
+        let video_url = info["video"]
+            .as_array()
+            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+            .flatten();
+        let audio_url = info["audio"]
+            .as_array()
+            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+            .flatten();
+        match (video_url, audio_url) {
+            (Some(vurl), Some(aurl)) => tracks
+                .extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)]),
+            (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
+            (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
+            _ => return err::InvalidResponse { resp: info }.fail(),
+        };
+        let origin = Origin::new(tracks, String::new());
+        Ok(Finata::new(vec![origin], title))
     }
+}
+
+impl Config for Video {
     fn client(&self) -> &Client {
         &self.client
     }
@@ -154,8 +152,8 @@ impl Extract for Bilibili {
     }
 }
 
-fn extract_cid(data: Value) -> Result<u64, Error> {
+fn extract_cid(data: &Value) -> Result<u64, Error> {
     data["cid"]
         .as_u64()
-        .ok_or(err::InvalidResponse { resp: data }.build())
+        .ok_or(err::InvalidResponse { resp: data.clone() }.build())
 }
