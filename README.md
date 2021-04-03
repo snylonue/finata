@@ -11,5 +11,8 @@ Currently these sites are supported:
 ## Status
 ~~Yeah, it now has a README.md~~
 
+## Todo
+1. add tests
+
 ## Thanks
 **[SocialSisterYi / bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**
