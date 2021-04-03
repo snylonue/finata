@@ -55,6 +55,14 @@ pub struct Finata {
     title: String,
 }
 
+impl Track {
+    pub fn as_url(&self) -> &Url {
+        match self {
+            Self::Video(url) | Self::Audio(url) | Self::Image(url) | Self::Text(url) => url,
+        }
+    }
+}
+
 impl Origin {
     pub fn new(tracks: Vec<Track>, title: String) -> Self {
         Self { tracks, title }
