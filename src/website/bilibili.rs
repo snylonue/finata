@@ -118,10 +118,10 @@ impl Video {
             _ => err::InvalidResponse { resp: info }.fail(),
         }
     }
-    async fn current_cid(&self) -> Result<u64, Error> {
+    async fn current_page(&self) -> Result<Value, Error> {
         let playlist = self.playlist_json().await?;
         match playlist.get(self.page.unwrap_or(1) - 1) {
-            Some(res) => extract_cid(res),
+            Some(res) => Ok(res.clone()),
             _ => err::InvalidResponse { resp: playlist }.fail(),
         }
     }
@@ -130,7 +130,8 @@ impl Video {
 #[async_trait::async_trait]
 impl Extract for Video {
     async fn extract(&mut self) -> crate::FinaResult {
-        let cid = self.current_cid().await?;
+        let page = self.current_page().await?;
+        let cid = extract_cid(&page)?;
         let title = self.title().await.unwrap_or_default();
         let mut tracks = Vec::new();
         let info = self.video_dash_urls(cid).await?;
@@ -149,7 +150,7 @@ impl Extract for Video {
             (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
             _ => return err::InvalidResponse { resp: info }.fail(),
         };
-        let origin = Origin::new(tracks, String::new());
+        let origin = Origin::new(tracks, page["part"].as_str().unwrap_or_default().to_owned());
         Ok(Finata::new(vec![origin], title))
     }
 }
