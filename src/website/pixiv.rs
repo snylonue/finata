@@ -1,6 +1,6 @@
-use crate::Extract;
 use crate::Config;
-use crate::{error as err, utils, Track};
+use crate::Extract;
+use crate::{error as err, utils};
 use crate::{utils::Client, Origin};
 use crate::{Error, Finata};
 use lazy_static::lazy_static;
@@ -81,7 +81,7 @@ impl Extract for Pixiv {
                 match url_data {
                     Value::String(ref url) => Url::parse(url)
                         .map_err(Into::into)
-                        .map(|raw| Origin::new(Track::Image, raw)),
+                        .map(|raw| Origin::image(raw, String::new())),
                     _ => err::InvalidResponse { resp: v }.fail(),
                 }
             })

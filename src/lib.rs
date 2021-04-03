@@ -73,6 +73,9 @@ impl Origin {
     pub fn audio(url: Url, title: String) -> Self {
         Self::new(vec![Track::Audio(url)], title)
     }
+    pub fn image(url: Url, title: String) -> Self {
+        Self::new(vec![Track::Image(url)], title)
+    }
 }
 
 impl Finata {
