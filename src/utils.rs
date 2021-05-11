@@ -1,10 +1,16 @@
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
 use crate::error as err;
 use lazy_static::lazy_static;
+use netscape_cookie::parse;
 use reqwest::header;
 use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use serde_json::Value;
 use snafu::ResultExt;
+use snafu::Snafu;
 use url::Url;
 
 #[macro_export]
@@ -49,6 +55,16 @@ pub struct Client {
     header: HeaderMap,
 }
 
+#[derive(Debug, Snafu)]
+pub enum ClientError {
+    #[snafu(context(false))]
+    IoError { source: std::io::Error },
+    #[snafu(context(false))]
+    InvalidNetscapeCookie { source: netscape_cookie::ParseError },
+    #[snafu(context(false))]
+    InvalidCookie { source: header::InvalidHeaderValue },
+}
+
 impl Client {
     fn with_details(inner: reqwest::Client, header: HeaderMap) -> Self {
         Self { inner, header }
@@ -59,9 +75,24 @@ impl Client {
     pub fn with_header(header: HeaderMap) -> Self {
         Self::with_details(CLIENT.clone(), header)
     }
-    pub fn push_cookie(&mut self, cookie: &str) -> Result<(), header::InvalidHeaderValue> {
+    pub fn push_cookie(&mut self, cookie: &str) -> Result<(), ClientError> {
         self.header
             .append(header::COOKIE, HeaderValue::from_str(cookie)?);
+        Ok(())
+    }
+    pub fn load_netscape_cookie(&mut self, cookie: impl AsRef<Path>) -> Result<(), ClientError> {
+        let mut file = File::open(cookie)?;
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        let cookies = parse(&mut buf)?
+            .iter()
+            .map(|c| format!("{}={}", c.name, c.value))
+            .fold(String::new(), |mut acc, x| {
+                acc.push_str(&x);
+                acc.push(';');
+                acc
+            });
+        self.push_cookie(&cookies)?;
         Ok(())
     }
     pub async fn send_json_request(&self, url: Url) -> Result<Value, err::Error> {
