@@ -87,11 +87,7 @@ impl Client {
         let cookies = parse(&mut buf)?
             .iter()
             .map(|c| format!("{}={}", c.name, c.value))
-            .fold(String::new(), |mut acc, x| {
-                acc.push_str(&x);
-                acc.push(';');
-                acc
-            });
+            .fold(String::new(), |acc, x| acc + &x + ";");
         self.push_cookie(&cookies)?;
         Ok(())
     }

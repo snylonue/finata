@@ -151,9 +151,7 @@ impl Extract for Collection {
                 ],
             )
             .unwrap();
-            dbg!(url.to_string());
             let coll = self.client().send_json_request(url).await?;
-            // println!("{}", to_string_pretty(&coll).unwrap());
             match &coll["body"]["works"] {
                 Value::Array(works) => {
                     for work in works {
