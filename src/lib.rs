@@ -49,7 +49,7 @@ pub struct Origin {
     pub title: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Finata {
     raws: Vec<Origin>,
     title: String,

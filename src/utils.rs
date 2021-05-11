@@ -1,7 +1,3 @@
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-
 use crate::error as err;
 use lazy_static::lazy_static;
 use netscape_cookie::parse;
@@ -11,6 +7,9 @@ use reqwest::header::HeaderValue;
 use serde_json::Value;
 use snafu::ResultExt;
 use snafu::Snafu;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 use url::Url;
 
 #[macro_export]
@@ -80,6 +79,7 @@ impl Client {
             .append(header::COOKIE, HeaderValue::from_str(cookie)?);
         Ok(())
     }
+    // todo: make this method async
     pub fn load_netscape_cookie(&mut self, cookie: impl AsRef<Path>) -> Result<(), ClientError> {
         let mut file = File::open(cookie)?;
         let mut buf = Vec::new();
