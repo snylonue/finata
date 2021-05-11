@@ -12,6 +12,7 @@ pub enum Error {
     InvalidUrl {
         url: Url,
     },
+    #[snafu(display("InvalidResponse: {}", resp))]
     InvalidResponse {
         resp: Value,
     },
