@@ -33,7 +33,7 @@ pub struct FinataError {
 }
 
 impl From<Error> for FinataError {
-    fn from(_: Error) -> Self {
-        todo!()
+    fn from(kind: Error) -> Self {
+        Self { kind }
     }
 }
