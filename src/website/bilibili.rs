@@ -100,7 +100,7 @@ impl Video {
         let mut data = self.video_url_json(cid).await?;
         match &mut data["data"]["dash"] {
             Value::Null => err::InvalidResponse { resp: data }.fail(),
-            res @ _ => Ok(res.take()),
+            res => Ok(res.take()),
         }
     }
     pub async fn video_info_json(&self) -> Result<Value, Error> {
@@ -167,5 +167,5 @@ impl Config for Video {
 fn extract_cid(data: &Value) -> Result<u64, Error> {
     data["cid"]
         .as_u64()
-        .ok_or(err::InvalidResponse { resp: data.clone() }.build())
+        .ok_or_else(|| err::InvalidResponse { resp: data.clone() }.build())
 }

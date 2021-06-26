@@ -8,8 +8,8 @@ use sugars::hmap;
 use url::Url;
 use utils::Client;
 
-const SONG_URL_API: &'static str = "https://music.163.com/api/song/enhance/player/url";
-const SONG_DETIAL_API: &'static str = "https://music.163.com/api/song/detail";
+const SONG_URL_API: &str = "https://music.163.com/api/song/enhance/player/url";
+const SONG_DETIAL_API: &str = "https://music.163.com/api/song/detail";
 const PLAYLIST_DETAIL_API: &str = "https://music.163.com/api/v3/playlist/detail";
 
 lazy_static! {
@@ -31,7 +31,7 @@ impl Song {
         let id = url
             .fragment()
             .map(|s| s.trim_start_matches("/song?id=").trim_end_matches('/'))
-            .ok_or(err::InvalidUrl { url: url.clone() }.build())?;
+            .ok_or_else(|| err::InvalidUrl { url: url.clone() }.build())?;
         Ok(Self::with_id(
             id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
         ))
@@ -103,7 +103,7 @@ impl PlayList {
         let id = url
             .fragment()
             .map(|s| s.trim_start_matches("/playlist?id=").trim_end_matches('/'))
-            .ok_or(err::InvalidUrl { url: url.clone() }.build())?;
+            .ok_or_else(|| err::InvalidUrl { url: url.clone() }.build())?;
         Ok(Self::with_id(
             id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
         ))

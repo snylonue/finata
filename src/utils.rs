@@ -84,7 +84,7 @@ impl Client {
         let mut file = File::open(cookie)?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
-        let cookies = parse(&mut buf)?
+        let cookies = parse(&buf)?
             .iter()
             .map(|c| format!("{}={}", c.name, c.value))
             .fold(String::new(), |acc, x| acc + &x + ";");
@@ -131,5 +131,11 @@ impl Client {
             .context(err::NetworkError { url })?
             .json::<Value>()
             .await?)
+    }
+}
+
+impl Default for Client {
+    fn default() -> Self {
+        Self::new()
     }
 }
