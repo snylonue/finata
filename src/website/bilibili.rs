@@ -106,7 +106,7 @@ impl Video {
     pub async fn video_info_json(&self) -> Result<Value, Error> {
         let url = match &self.id {
             Id::Av(av) => format!("{}?aid={}", VIDEO_INFO_API, av),
-            Id::Bv(bv) => format!("{}?bvid={}", VIDEO_API, bv),
+            Id::Bv(bv) => format!("{}?bvid={}", VIDEO_INFO_API, bv),
         }
         .parse()?;
         self.client.send_json_request(url).await
