@@ -36,13 +36,9 @@ impl Pixiv {
         let url: Url = Url::parse(s)?;
         let pid = url
             .path_segments()
-            .ok_or(Error::InvalidUrl {
-                url: url.to_owned(),
-            })?
+            .ok_or_else(|| Error::InvalidUrl { url: url.clone() })?
             .next_back()
-            .ok_or(Error::InvalidUrl {
-                url: url.to_owned(),
-            })?
+            .ok_or_else(|| Error::InvalidUrl { url: url.clone() })?
             .to_owned();
         Ok(Self::with_pid(pid))
     }
@@ -113,11 +109,11 @@ impl Collection {
         let url: Url = Url::parse(s)?;
         let uid = url
             .path_segments()
-            .ok_or(Error::InvalidUrl {
+            .ok_or_else(|| Error::InvalidUrl {
                 url: url.to_owned(),
             })?
             .nth_back(3)
-            .ok_or(Error::InvalidUrl {
+            .ok_or_else(|| Error::InvalidUrl {
                 url: url.to_owned(),
             })?
             .to_owned();
