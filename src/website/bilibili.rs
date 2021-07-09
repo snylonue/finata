@@ -26,6 +26,8 @@ pub const VIDEO_INFO_API: &str = "https://api.bilibili.com/x/web-interface/view"
 pub enum Id {
     Av(String),
     Bv(String),
+    Ep(String),
+    Ss(String)
 }
 
 pub struct Video {
@@ -40,13 +42,23 @@ impl Id {
             Self::Av(id.trim_start_matches("av").to_owned())
         } else if id.starts_with("BV") {
             Self::Bv(id.to_owned())
+        } else if id.starts_with("ep") {
+            Self::Ep(id.trim_start_matches("ep").to_owned())
+        } else if id.starts_with("ss") {
+            Self::Ss(id.trim_start_matches("ss").to_owned())
         } else {
             todo!()
         }
     }
+    pub(crate) fn is_simple_video(&self) -> bool {
+        matches!(self, &Self::Av(_) | &Self::Bv(_))
+    }
 }
 
 impl Video {
+    fn construct(client: Client, id: Id, page: Option<usize>) -> Self {
+        Self { client, id, page  }
+    }
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s)?;
         let id = url
@@ -57,10 +69,14 @@ impl Video {
                 url: url.to_owned(),
             })?
             .to_owned();
+        let id = Id::new(&id);
+        if !id.is_simple_video() {
+            return Err(Error::InvalidUrl { url: url.to_owned() });
+        }
         let page = url
             .query_pairs()
             .find_map(|(key, v)| if key == "p" { v.parse().ok() } else { None });
-        Ok(Self::with_id(id, page))
+        Ok(Self::construct(Client::with_header(HEADERS.clone()), id, page))
     }
     pub fn with_id(id: String, page: Option<usize>) -> Self {
         Self::with_client(Client::with_header(HEADERS.clone()), id, page)
@@ -76,6 +92,7 @@ impl Video {
         let url = match &self.id {
             Id::Av(av) => format!("{}?aid={}", CID_API, av),
             Id::Bv(bv) => format!("{}?bvid={}", CID_API, bv),
+            _ => unreachable!()
         }
         .parse()?;
         let data = self.client.send_json_request(url).await?;
@@ -91,6 +108,7 @@ impl Video {
             match self.id {
                 Id::Av(ref avid) => tmp.push_str(&format!("avid={}", avid)),
                 Id::Bv(ref bvid) => tmp.push_str(&format!("bvid={}", bvid)),
+                _ => unreachable!()
             };
             tmp.parse()?
         };
@@ -107,6 +125,7 @@ impl Video {
         let url = match &self.id {
             Id::Av(av) => format!("{}?aid={}", VIDEO_INFO_API, av),
             Id::Bv(bv) => format!("{}?bvid={}", VIDEO_INFO_API, bv),
+            _ => unreachable!()
         }
         .parse()?;
         self.client.send_json_request(url).await
