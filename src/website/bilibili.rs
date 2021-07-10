@@ -53,6 +53,20 @@ impl Id {
     pub(crate) fn is_simple_video(&self) -> bool {
         matches!(self, &Self::Av(_) | &Self::Bv(_))
     }
+    fn as_cid_api(&self) -> Result<Url, url::ParseError> {
+        match self {
+            Self::Av(av) => format!("{}?aid={}", CID_API, av),
+            Self::Bv(bv) => format!("{}?bvid={}", CID_API, bv),
+            _ => unimplemented!()
+        }.parse()
+    }
+    fn as_video_api(&self, cid: u64) -> Result<Url, url::ParseError> {
+        match self {
+            Id::Av(ref avid) => format!("{}?cid={}&fnval=16&fourk=1&avid={}", VIDEO_API, cid, avid),
+            Id::Bv(ref bvid) => format!("{}?cid={}&fnval=16&fourk=1&bvid={}", VIDEO_API, cid, bvid),
+            _ => unimplemented!()
+        }.parse()
+    }
 }
 
 impl Video {
@@ -89,12 +103,7 @@ impl Video {
         }
     }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
-        let url = match &self.id {
-            Id::Av(av) => format!("{}?aid={}", CID_API, av),
-            Id::Bv(bv) => format!("{}?bvid={}", CID_API, bv),
-            _ => unreachable!()
-        }
-        .parse()?;
+        let url = self.id.as_cid_api()?;
         let data = self.client.send_json_request(url).await?;
         match data["data"] {
             Value::Array(ref cids) => Ok(cids.clone()),
@@ -103,15 +112,7 @@ impl Video {
     }
     /// Returns dash url
     pub async fn video_url_json(&self, cid: u64) -> Result<Value, Error> {
-        let url = {
-            let mut tmp = format!("{}?cid={}&fnval=16&fourk=1&", VIDEO_API, cid);
-            match self.id {
-                Id::Av(ref avid) => tmp.push_str(&format!("avid={}", avid)),
-                Id::Bv(ref bvid) => tmp.push_str(&format!("bvid={}", bvid)),
-                _ => unreachable!()
-            };
-            tmp.parse()?
-        };
+        let url = self.id.as_video_api(cid)?;
         self.client.send_json_request(url).await
     }
     pub async fn video_dash_urls(&self, cid: u64) -> Result<Value, Error> {
