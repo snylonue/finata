@@ -102,15 +102,11 @@ impl Video {
             _ => Err(Error::InvalidUrl { url }),
         }
     }
-    pub fn with_id(id: String, page: Option<usize>) -> Self {
+    pub fn with_id(id: Id, page: Option<usize>) -> Self {
         Self::with_client(Client::with_header(HEADERS.clone()), id, page)
     }
-    pub fn with_client(client: Client, id: String, page: Option<usize>) -> Self {
-        Self {
-            client,
-            id: Id::new(&id),
-            page,
-        }
+    pub fn with_client(client: Client, id: Id, page: Option<usize>) -> Self {
+        Self { client, id, page }
     }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = self.id.as_cid_api()?;
@@ -196,6 +192,12 @@ impl Config for Video {
 
 impl Bangumi {
     fn construct(client: Client, id: Id) -> Self {
+        Self { client, id }
+    }
+    pub fn with_id(id: Id) -> Self {
+        Self::with_client(Client::with_header(HEADERS.clone()), id)
+    }
+    pub fn with_client(client: Client, id: Id) -> Self {
         Self { client, id }
     }
     pub fn new(s: &str) -> Result<Self, Error> {
