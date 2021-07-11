@@ -29,7 +29,7 @@ pub enum Id {
     Av(String),
     Bv(String),
     Ep(u64),
-    Ss(String)
+    Ss(String),
 }
 
 pub struct Video {
@@ -63,20 +63,22 @@ impl Id {
             Self::Bv(bv) => format!("{}?bvid={}", CID_API, bv),
             Self::Ep(ep) => format!("{}?ep_id={}", BANGUMI_CID_API, ep),
             Self::Ss(ss) => format!("{}?season_id={}", BANGUMI_CID_API, ss),
-        }.parse()
+        }
+        .parse()
     }
     fn as_video_api(&self, cid: u64) -> Result<Url, url::ParseError> {
         match self {
             Id::Av(ref avid) => format!("{}?cid={}&fnval=16&fourk=1&avid={}", VIDEO_API, cid, avid),
             Id::Bv(ref bvid) => format!("{}?cid={}&fnval=16&fourk=1&bvid={}", VIDEO_API, cid, bvid),
-            _ => unimplemented!()
-        }.parse()
+            _ => unimplemented!(),
+        }
+        .parse()
     }
 }
 
 impl Video {
     fn construct(client: Client, id: Id, page: Option<usize>) -> Self {
-        Self { client, id, page  }
+        Self { client, id, page }
     }
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s)?;
@@ -92,8 +94,12 @@ impl Video {
             .query_pairs()
             .find_map(|(key, v)| if key == "p" { v.parse().ok() } else { None });
         match Id::new(&id) {
-            id @ (Id::Av(_) | Id::Bv(_)) => Ok(Self::construct(Client::with_header(HEADERS.clone()), id, page)),
-            _ => Err(Error::InvalidUrl { url })
+            id @ (Id::Av(_) | Id::Bv(_)) => Ok(Self::construct(
+                Client::with_header(HEADERS.clone()),
+                id,
+                page,
+            )),
+            _ => Err(Error::InvalidUrl { url }),
         }
     }
     pub fn with_id(id: String, page: Option<usize>) -> Self {
@@ -130,7 +136,7 @@ impl Video {
         let url = match &self.id {
             Id::Av(av) => format!("{}?aid={}", VIDEO_INFO_API, av),
             Id::Bv(bv) => format!("{}?bvid={}", VIDEO_INFO_API, bv),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
         .parse()?;
         self.client.send_json_request(url).await
@@ -190,7 +196,7 @@ impl Config for Video {
 
 impl Bangumi {
     fn construct(client: Client, id: Id) -> Self {
-        Self { client, id  }
+        Self { client, id }
     }
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s)?;
@@ -203,8 +209,10 @@ impl Bangumi {
             })?
             .to_owned();
         match Id::new(&id) {
-            id @ (Id::Ep(_) | Id::Ss(_)) => Ok(Self::construct(Client::with_header(HEADERS.clone()), id)),
-            _ => Err(Error::InvalidUrl { url })
+            id @ (Id::Ep(_) | Id::Ss(_)) => {
+                Ok(Self::construct(Client::with_header(HEADERS.clone()), id))
+            }
+            _ => Err(Error::InvalidUrl { url }),
         }
     }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
@@ -220,7 +228,7 @@ impl Bangumi {
         let page = match self.id {
             Id::Ss(_) => playlist.first(),
             Id::Ep(epid) => playlist.iter().find(|ep| ep["id"].as_u64() == Some(epid)),
-            _ => unreachable!()
+            _ => unreachable!(),
         };
         match page {
             Some(res) => Ok(res.to_owned()),
