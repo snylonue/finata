@@ -88,7 +88,7 @@ impl Id {
 
 impl Video {
     pub fn new(s: &str) -> Result<Self, Error> {
-        let url: Url = Url::parse(s)?;
+        let url: Url = Url::parse(s.trim_end_matches('/'))?;
         let id = Id::from_url(&url)?;
         let page = url
             .query_pairs()
@@ -194,7 +194,7 @@ impl Bangumi {
         Self { client, id }
     }
     pub fn new(s: &str) -> Result<Self, Error> {
-        let url: Url = Url::parse(s)?;
+        let url: Url = Url::parse(s.trim_end_matches('/'))?;
         let id = Id::from_url(&url)?;
         match id {
             Id::Ep(_) | Id::Ss(_) => Ok(Self::with_id(id)),

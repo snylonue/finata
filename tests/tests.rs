@@ -5,7 +5,7 @@ mod bilibili {
 
     #[tokio::test]
     async fn av() {
-        let mut extractor = Video::new("https://www.bilibili.com/video/av54592589").unwrap();
+        let mut extractor = Video::new("https://www.bilibili.com/video/av54592589/").unwrap();
         let res = extractor.extract().await.unwrap();
         assert_eq!(
             res.title(),

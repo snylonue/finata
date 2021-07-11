@@ -33,7 +33,7 @@ pub struct Collection {
 
 impl Pixiv {
     pub fn new(s: &str) -> Result<Self, Error> {
-        let url: Url = Url::parse(s)?;
+        let url: Url = Url::parse(s.trim_end_matches('/'))?;
         let pid = url
             .path_segments()
             .ok_or_else(|| Error::InvalidUrl { url: url.clone() })?
@@ -106,7 +106,7 @@ impl Config for Pixiv {
 
 impl Collection {
     pub fn new(s: &str) -> Result<Self, Error> {
-        let url: Url = Url::parse(s)?;
+        let url: Url = Url::parse(s.trim_end_matches('/'))?;
         let uid = url
             .path_segments()
             .ok_or_else(|| Error::InvalidUrl {
