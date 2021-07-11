@@ -4,7 +4,7 @@ A media extracting library written in Rust, mainly as a backend of [b2m](https:/
 
 ## Supported sites
 Currently these sites are supported:
-1. bililili: av/bv video
+1. bililili: av/bv video and anime
 2. pixiv: static image and user collection
 3. netease music: song and playlist
 
@@ -12,7 +12,7 @@ Currently these sites are supported:
 ~~Yeah, it now has a README.md~~
 
 ## Todo
-1. add tests
+1. add tests (bilibili and netease music added)
 
 ## Thanks
 **[SocialSisterYi / bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)**
