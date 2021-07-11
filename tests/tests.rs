@@ -2,10 +2,22 @@
 mod bilibili {
     use finata::website::bilibili::*;
     use finata::Extract;
+    use finata::Config;
+    use finata::utils::Client;
+    use reqwest::header::*;
 
+    fn client() -> Client {
+        let mut client = Client::with_header(finata::hdmap! {
+            USER_AGENT => finata::utils::UA.clone(),
+            REFERER => "https://www.bilibili.com",
+        });
+        *client.client_mut() = reqwest::Client::new();
+        client
+    }
     #[tokio::test]
     async fn av() {
         let mut extractor = Video::new("https://www.bilibili.com/video/av54592589/").unwrap();
+        *extractor.client_mut() = client();
         let res = extractor.extract().await.unwrap();
         assert_eq!(
             res.title(),
@@ -16,6 +28,7 @@ mod bilibili {
     #[tokio::test]
     async fn bv() {
         let mut extractor = Video::new("https://www.bilibili.com/video/BV1L4411M7sC").unwrap();
+        *extractor.client_mut() = client();
         let res = extractor.extract().await.unwrap();
         assert_eq!(
             res.title(),
@@ -26,6 +39,7 @@ mod bilibili {
     #[tokio::test]
     async fn ep() {
         let mut extractor = Bangumi::new("https://www.bilibili.com/bangumi/play/ep28251").unwrap();
+        *extractor.client_mut() = client();
         let res = extractor.extract().await.unwrap();
         assert_eq!(res.title(), "【1月】路人女主的养成方法 03");
         assert!(!res.raws().is_empty());
@@ -33,6 +47,7 @@ mod bilibili {
     #[tokio::test]
     async fn ss() {
         let mut extractor = Bangumi::new("https://www.bilibili.com/bangumi/play/ss1512").unwrap();
+        *extractor.client_mut() = client();
         let res = extractor.extract().await.unwrap();
         assert_eq!(res.title(), "【1月】路人女主的养成方法 00");
         assert!(!res.raws().is_empty());

@@ -105,6 +105,9 @@ impl Client {
     pub fn client(&self) -> &reqwest::Client {
         &self.inner
     }
+    pub fn client_mut(&mut self) -> &mut reqwest::Client {
+        &mut self.inner
+    }
     pub async fn post_form_json<T: serde::Serialize>(
         &self,
         url: Url,
