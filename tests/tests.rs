@@ -38,3 +38,18 @@ mod bilibili {
         assert!(!res.raws().is_empty());
     }
 }
+
+#[cfg(test)]
+mod netease_music {
+    use finata::website::netease_music::*;
+    use finata::Extract;
+    use url::Url;
+
+    #[tokio::test]
+    async fn song() {
+        let mut extractor = Song::new(Url::parse("https://music.163.com/#/song?id=1440302397").unwrap()).unwrap();
+        let res = extractor.extract().await.unwrap();
+        assert_eq!(res.title(), "Same Side");
+        assert!(!res.raws().is_empty())
+    }
+}
