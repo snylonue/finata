@@ -21,3 +21,6 @@ async-trait = "0.1.42"
 tokio = { version = "1", features = ["rt-multi-thread"] }
 serde = "1.0"
 netscape-cookie = { version = "0.1.1", optional = false }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
