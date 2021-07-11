@@ -44,6 +44,16 @@ pub struct Bangumi {
 }
 
 impl Id {
+    pub fn from_url(url: &Url) -> Result<Self, Error> {
+        let id = url
+            .path_segments()
+            .map(|mut it| it.next_back())
+            .flatten()
+            .ok_or(Error::InvalidUrl {
+                url: url.to_owned(),
+            })?;
+        Ok(Self::new(id))
+    }
     pub fn new(id: &str) -> Self {
         if id.starts_with("av") {
             Self::Av(id.trim_start_matches("av").to_owned())
@@ -77,28 +87,14 @@ impl Id {
 }
 
 impl Video {
-    fn construct(client: Client, id: Id, page: Option<usize>) -> Self {
-        Self { client, id, page }
-    }
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s)?;
-        let id = url
-            .path_segments()
-            .map(|mut it| it.next_back())
-            .flatten()
-            .ok_or(Error::InvalidUrl {
-                url: url.to_owned(),
-            })?
-            .to_owned();
+        let id = Id::from_url(&url)?;
         let page = url
             .query_pairs()
             .find_map(|(key, v)| if key == "p" { v.parse().ok() } else { None });
-        match Id::new(&id) {
-            id @ (Id::Av(_) | Id::Bv(_)) => Ok(Self::construct(
-                Client::with_header(HEADERS.clone()),
-                id,
-                page,
-            )),
+        match id {
+            Id::Av(_) | Id::Bv(_) => Ok(Self::with_id(id, page)),
             _ => Err(Error::InvalidUrl { url }),
         }
     }
@@ -191,9 +187,6 @@ impl Config for Video {
 }
 
 impl Bangumi {
-    fn construct(client: Client, id: Id) -> Self {
-        Self { client, id }
-    }
     pub fn with_id(id: Id) -> Self {
         Self::with_client(Client::with_header(HEADERS.clone()), id)
     }
@@ -202,18 +195,9 @@ impl Bangumi {
     }
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s)?;
-        let id = url
-            .path_segments()
-            .map(|mut it| it.next_back())
-            .flatten()
-            .ok_or(Error::InvalidUrl {
-                url: url.to_owned(),
-            })?
-            .to_owned();
-        match Id::new(&id) {
-            id @ (Id::Ep(_) | Id::Ss(_)) => {
-                Ok(Self::construct(Client::with_header(HEADERS.clone()), id))
-            }
+        let id = Id::from_url(&url)?;
+        match id {
+            Id::Ep(_) | Id::Ss(_) => Ok(Self::with_id(id)),
             _ => Err(Error::InvalidUrl { url }),
         }
     }
@@ -244,7 +228,7 @@ impl Extract for Bangumi {
     async fn extract(&mut self) -> crate::FinaResult {
         let page = self.current_page().await?;
         let aid = page["aid"].as_u64().unwrap();
-        let mut video = Video::construct(self.client.clone(), Id::Av(aid.to_string()), None);
+        let mut video = Video::with_client(self.client.clone(), Id::Av(aid.to_string()), None);
         video.extract().await
     }
 }
