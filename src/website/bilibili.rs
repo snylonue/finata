@@ -17,6 +17,8 @@ lazy_static! {
 
 /// add ?bvid={} or ?aid={}
 const CID_API: &str = "https://api.bilibili.com/x/player/pagelist";
+/// add ?season_id={} or ?ep_id={}
+const BANGUMI_CID_API: &str = "https://api.bilibili.com/pgc/view/web/season";
 /// ?cid={}&qn={}&avid={} or ?cid={}&qn={}&bvid={}
 const VIDEO_API: &str = "https://api.bilibili.com/x/player/playurl";
 /// ?bvid={} or ?aid={}
@@ -26,7 +28,7 @@ pub const VIDEO_INFO_API: &str = "https://api.bilibili.com/x/web-interface/view"
 pub enum Id {
     Av(String),
     Bv(String),
-    Ep(String),
+    Ep(u64),
     Ss(String)
 }
 
@@ -36,6 +38,11 @@ pub struct Video {
     page: Option<usize>,
 }
 
+pub struct Bangumi {
+    client: Client,
+    id: Id,
+}
+
 impl Id {
     pub fn new(id: &str) -> Self {
         if id.starts_with("av") {
@@ -43,21 +50,19 @@ impl Id {
         } else if id.starts_with("BV") {
             Self::Bv(id.to_owned())
         } else if id.starts_with("ep") {
-            Self::Ep(id.trim_start_matches("ep").to_owned())
+            Self::Ep(id.trim_start_matches("ep").parse().unwrap())
         } else if id.starts_with("ss") {
             Self::Ss(id.trim_start_matches("ss").to_owned())
         } else {
             todo!()
         }
     }
-    pub(crate) fn is_simple_video(&self) -> bool {
-        matches!(self, &Self::Av(_) | &Self::Bv(_))
-    }
     fn as_cid_api(&self) -> Result<Url, url::ParseError> {
         match self {
             Self::Av(av) => format!("{}?aid={}", CID_API, av),
             Self::Bv(bv) => format!("{}?bvid={}", CID_API, bv),
-            _ => unimplemented!()
+            Self::Ep(ep) => format!("{}?ep_id={}", BANGUMI_CID_API, ep),
+            Self::Ss(ss) => format!("{}?season_id={}", BANGUMI_CID_API, ss),
         }.parse()
     }
     fn as_video_api(&self, cid: u64) -> Result<Url, url::ParseError> {
@@ -83,14 +88,13 @@ impl Video {
                 url: url.to_owned(),
             })?
             .to_owned();
-        let id = Id::new(&id);
-        if !id.is_simple_video() {
-            return Err(Error::InvalidUrl { url: url.to_owned() });
-        }
         let page = url
             .query_pairs()
             .find_map(|(key, v)| if key == "p" { v.parse().ok() } else { None });
-        Ok(Self::construct(Client::with_header(HEADERS.clone()), id, page))
+        match Id::new(&id) {
+            id @ (Id::Av(_) | Id::Bv(_)) => Ok(Self::construct(Client::with_header(HEADERS.clone()), id, page)),
+            _ => Err(Error::InvalidUrl { url })
+        }
     }
     pub fn with_id(id: String, page: Option<usize>) -> Self {
         Self::with_client(Client::with_header(HEADERS.clone()), id, page)
@@ -176,6 +180,66 @@ impl Extract for Video {
 }
 
 impl Config for Video {
+    fn client(&self) -> &Client {
+        &self.client
+    }
+    fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
+    }
+}
+
+impl Bangumi {
+    fn construct(client: Client, id: Id) -> Self {
+        Self { client, id  }
+    }
+    pub fn new(s: &str) -> Result<Self, Error> {
+        let url: Url = Url::parse(s)?;
+        let id = url
+            .path_segments()
+            .map(|mut it| it.next_back())
+            .flatten()
+            .ok_or(Error::InvalidUrl {
+                url: url.to_owned(),
+            })?
+            .to_owned();
+        match Id::new(&id) {
+            id @ (Id::Ep(_) | Id::Ss(_)) => Ok(Self::construct(Client::with_header(HEADERS.clone()), id)),
+            _ => Err(Error::InvalidUrl { url })
+        }
+    }
+    pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
+        let url = self.id.as_cid_api()?;
+        let data = self.client.send_json_request(url).await?;
+        match data["result"]["episodes"] {
+            Value::Array(ref eps) => Ok(eps.clone()),
+            _ => err::InvalidResponse { resp: data }.fail(),
+        }
+    }
+    async fn current_page(&self) -> Result<Value, Error> {
+        let playlist = self.playlist_json().await?;
+        let page = match self.id {
+            Id::Ss(_) => playlist.first(),
+            Id::Ep(epid) => playlist.iter().find(|ep| ep["id"].as_u64() == Some(epid)),
+            _ => unreachable!()
+        };
+        match page {
+            Some(res) => Ok(res.to_owned()),
+            None => err::InvalidResponse { resp: playlist }.fail(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Extract for Bangumi {
+    async fn extract(&mut self) -> crate::FinaResult {
+        let page = self.current_page().await?;
+        let aid = page["aid"].as_u64().unwrap();
+        let mut video = Video::construct(self.client.clone(), Id::Av(aid.to_string()), None);
+        video.extract().await
+    }
+}
+
+impl Config for Bangumi {
     fn client(&self) -> &Client {
         &self.client
     }
