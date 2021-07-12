@@ -29,7 +29,7 @@ pub trait ExtractSync {
     fn extract_sync(&mut self) -> FinaResult;
 }
 
-impl<T: Extract> ExtractSync for T {
+impl<T: Extract + ?Sized> ExtractSync for T {
     fn extract_sync(&mut self) -> FinaResult {
         RUNTIME.block_on(async { self.extract().await })
     }
