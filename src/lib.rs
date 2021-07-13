@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use std::fmt::Debug;
 use tokio::runtime::Runtime;
 use url::Url;
 use utils::Client;
@@ -35,7 +36,7 @@ impl<T: Extract + ?Sized> ExtractSync for T {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Track {
     Video(Url),
     Audio(Url),
@@ -59,6 +60,17 @@ impl Track {
     pub fn as_url(&self) -> &Url {
         match self {
             Self::Video(url) | Self::Audio(url) | Self::Image(url) | Self::Text(url) => url,
+        }
+    }
+}
+
+impl Debug for Track {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Track::Video(url) => f.write_fmt(format_args!("Video({})", url)),
+            Track::Audio(url) => f.write_fmt(format_args!("Audio({})", url)),
+            Track::Text(url) => f.write_fmt(format_args!("Text({})", url)),
+            Track::Image(url) => f.write_fmt(format_args!("Image({})", url)),
         }
     }
 }
