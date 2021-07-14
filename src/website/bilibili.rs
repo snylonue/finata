@@ -26,10 +26,10 @@ pub const VIDEO_INFO_API: &str = "https://api.bilibili.com/x/web-interface/view"
 
 #[derive(Debug)]
 pub enum Id {
-    Av(String),
+    Av(u64),
     Bv(String),
     Ep(u64),
-    Ss(String),
+    Ss(u64),
 }
 
 pub struct Video {
@@ -45,26 +45,26 @@ pub struct Bangumi {
 
 impl Id {
     pub fn from_url(url: &Url) -> Result<Self, Error> {
-        let id = url
-            .path_segments()
+        url.path_segments()
             .map(|mut it| it.next_back())
             .flatten()
-            .ok_or(Error::InvalidUrl {
+            .map(Self::new)
+            .flatten()
+            .ok_or_else(|| Error::InvalidUrl {
                 url: url.to_owned(),
-            })?;
-        Ok(Self::new(id))
+            })
     }
-    pub fn new(id: &str) -> Self {
+    pub fn new(id: &str) -> Option<Self> {
         if id.starts_with("av") {
-            Self::Av(id.trim_start_matches("av").to_owned())
+            id.trim_start_matches("av").parse().ok().map(Self::Av)
         } else if id.starts_with("BV") {
-            Self::Bv(id.to_owned())
+            Some(Self::Bv(id.to_owned()))
         } else if id.starts_with("ep") {
-            Self::Ep(id.trim_start_matches("ep").parse().unwrap())
+            id.trim_start_matches("ep").parse().ok().map(Self::Ep)
         } else if id.starts_with("ss") {
-            Self::Ss(id.trim_start_matches("ss").to_owned())
+            id.trim_start_matches("ss").parse().ok().map(Self::Ss)
         } else {
-            todo!()
+            None
         }
     }
     fn as_cid_api(&self) -> Result<Url, url::ParseError> {
@@ -228,7 +228,7 @@ impl Extract for Bangumi {
     async fn extract(&mut self) -> crate::FinaResult {
         let page = self.current_page().await?;
         let aid = page["aid"].as_u64().unwrap();
-        let mut video = Video::with_client(self.client.clone(), Id::Av(aid.to_string()), None);
+        let mut video = Video::with_client(self.client.clone(), Id::Av(aid), None);
         video.extract().await
     }
 }
