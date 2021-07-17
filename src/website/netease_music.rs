@@ -27,14 +27,14 @@ pub struct Song {
 
 // todo: refactor
 impl Song {
-    pub fn new(url: Url) -> Result<Self, Error> {
-        let id = url
-            .fragment()
+    pub fn new(url: &str) -> Result<Self, Error> {
+        let url: Url = url.parse()?;
+        url.fragment()
             .map(|s| s.trim_start_matches("/song?id=").trim_end_matches('/'))
-            .ok_or_else(|| err::InvalidUrl { url: url.clone() }.build())?;
-        Ok(Self::with_id(
-            id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
-        ))
+            .ok_or_else(|| Error::InvalidUrl { url: url.clone() })?
+            .parse()
+            .map(Self::with_id)
+            .map_err(|_| Error::InvalidUrl { url })
     }
     pub fn with_id(id: u64) -> Self {
         Self::with_client(Client::with_header(HEADERS.clone()), id)
@@ -99,14 +99,14 @@ pub struct PlayList {
 }
 
 impl PlayList {
-    pub fn new(url: Url) -> Result<Self, Error> {
-        let id = url
-            .fragment()
+    pub fn new(url: &str) -> Result<Self, Error> {
+        let url: Url = url.parse()?;
+        url.fragment()
             .map(|s| s.trim_start_matches("/playlist?id=").trim_end_matches('/'))
-            .ok_or_else(|| err::InvalidUrl { url: url.clone() }.build())?;
-        Ok(Self::with_id(
-            id.parse().map_err(|_| err::InvalidUrl { url }.build())?,
-        ))
+            .ok_or_else(|| Error::InvalidUrl { url: url.clone() })?
+            .parse()
+            .map(Self::with_id)
+            .map_err(|_| Error::InvalidUrl { url })
     }
     pub fn with_id(id: u64) -> Self {
         Self::extracts_vip(id, false)

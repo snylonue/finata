@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod bilibili {
-    use finata::website::bilibili::*;
-    use finata::Extract;
-    use finata::Config;
     use finata::utils::Client;
+    use finata::website::bilibili::*;
+    use finata::Config;
+    use finata::Extract;
     use reqwest::header::*;
 
     fn client() -> Client {
@@ -58,11 +58,10 @@ mod bilibili {
 mod netease_music {
     use finata::website::netease_music::*;
     use finata::Extract;
-    use url::Url;
 
     #[tokio::test]
     async fn song() {
-        let mut extractor = Song::new(Url::parse("https://music.163.com/#/song?id=1440302397").unwrap()).unwrap();
+        let mut extractor = Song::new("https://music.163.com/#/song?id=1440302397").unwrap();
         let res = extractor.extract().await.unwrap();
         assert_eq!(res.title(), "Same Side");
         assert!(!res.raws().is_empty())
