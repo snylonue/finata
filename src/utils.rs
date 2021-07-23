@@ -1,14 +1,11 @@
 use crate::error as err;
 use lazy_static::lazy_static;
-use netscape_cookie::parse;
 use reqwest::header;
 use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use serde_json::Value;
 use snafu::ResultExt;
 use snafu::Snafu;
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 use url::Url;
 
@@ -59,7 +56,7 @@ pub enum ClientError {
     #[snafu(context(false))]
     IoError { source: std::io::Error },
     #[snafu(context(false))]
-    InvalidNetscapeCookie { source: netscape_cookie::ParseError },
+    InvalidNetscapeCookie { source: nescookie::error::Error },
     #[snafu(context(false))]
     InvalidCookie { source: header::InvalidHeaderValue },
 }
@@ -81,12 +78,9 @@ impl Client {
     }
     // todo: make this method async
     pub fn load_netscape_cookie(&mut self, cookie: impl AsRef<Path>) -> Result<(), ClientError> {
-        let mut file = File::open(cookie)?;
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        let cookies = parse(&buf)?
+        let cookies = nescookie::open(cookie)?
             .iter()
-            .map(|c| format!("{}={}", c.name, c.value))
+            .map(|c| format!("{}={}", c.name(), c.value()))
             .fold(String::new(), |acc, x| acc + &x + ";");
         self.push_cookie(&cookies)?;
         Ok(())
