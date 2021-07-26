@@ -52,8 +52,8 @@ pub struct Origin {
 
 #[derive(Debug, PartialEq, Default)]
 pub struct Finata {
-    raws: Vec<Origin>,
-    title: String,
+    pub raws: Vec<Origin>,
+    pub title: String,
 }
 
 impl Track {

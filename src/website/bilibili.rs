@@ -172,7 +172,7 @@ impl Extract for Video {
             (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
             _ => return err::InvalidResponse { resp: info }.fail(),
         };
-        let origin = Origin::new(tracks, page["part"].as_str().unwrap_or_default().to_owned());
+        let origin = Origin::new(tracks, title.clone());
         Ok(Finata::new(vec![origin], title))
     }
 }

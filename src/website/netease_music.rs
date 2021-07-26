@@ -162,9 +162,13 @@ impl Extract for PlayList {
             .ok_or_else(error)?;
         let mut songs = Vec::with_capacity(track_ids.len());
         for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) {
+            let song = Song::with_id(track_id);
             // skip invalid id
-            match Song::with_id(track_id).raw_url().await {
-                Ok(raw_url) => songs.push(Origin::audio(raw_url, String::new())),
+            match song.raw_url().await {
+                Ok(raw_url) => songs.push(Origin::audio(
+                    raw_url,
+                    song.title().await.unwrap_or_default(),
+                )),
                 Err(e) => match e {
                     // ignore vip songs
                     Error::InvalidResponse { ref resp } if resp["data"][0]["code"] == -110 => {}
