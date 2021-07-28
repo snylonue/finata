@@ -1,5 +1,5 @@
 use crate::Config;
-use crate::{error as err, value_to_string, FinaResult};
+use crate::{error as err, FinaResult};
 use crate::{utils, Error, Extract, Finata, Origin};
 use lazy_static::lazy_static;
 use reqwest::header;
@@ -78,7 +78,7 @@ impl Song {
             }
             .build()
         };
-        let name = value_to_string!(details["songs"][0]["name"]).ok_or_else(error)?;
+        let name = details["songs"][0]["name"].as_str().ok_or_else(error)?;
         let arthor = details["songs"][0]["artists"]
             .as_array()
             .ok_or_else(error)?
@@ -86,7 +86,7 @@ impl Song {
             .filter_map(|s| s.as_str())
             .collect::<Vec<_>>();
         match arthor.len() {
-            0 => Ok(name),
+            0 => Ok(name.to_owned()),
             _ => Ok(format!("{} - {}", arthor.join(","), name)),
         }
     }
