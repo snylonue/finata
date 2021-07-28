@@ -9,22 +9,6 @@ use snafu::Snafu;
 use std::path::Path;
 use url::Url;
 
-#[macro_export]
-macro_rules! hdmap {
-    () => {
-        reqwest::header::HeaderMap::new()
-    };
-    ($($key: expr => $value: expr),+ $(,)?) => {
-        {
-            use std::convert::TryInto;
-            const CAP: usize = sugars::count!($($key),*);
-            let mut map = reqwest::header::HeaderMap::with_capacity(CAP);
-            $(map.insert($key, $value.try_into().unwrap());)+
-            map
-        }
-    };
-}
-
 lazy_static! {
     pub static ref CLIENT: reqwest::Client = reqwest::ClientBuilder::new().gzip(true).build().unwrap();
     pub static ref UA: HeaderValue = HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
