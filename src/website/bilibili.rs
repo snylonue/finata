@@ -147,6 +147,29 @@ impl Video {
             _ => err::InvalidResponse { resp: playlist }.fail(),
         }
     }
+    async fn extract_with_cid(&mut self, cid: u64) -> crate::FinaResult {
+        let page = self.current_page().await?;
+        let title = self.title().await.unwrap_or_default();
+        let mut tracks = Vec::new();
+        let info = self.video_dash_urls(cid).await?;
+        let video_url = info["video"]
+            .as_array()
+            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+            .flatten();
+        let audio_url = info["audio"]
+            .as_array()
+            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+            .flatten();
+        match (video_url, audio_url) {
+            (Some(vurl), Some(aurl)) => tracks
+                .extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)]),
+            (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
+            (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
+            _ => return err::InvalidResponse { resp: info }.fail(),
+        };
+        let origin = Origin::new(tracks, page["part"].as_str().unwrap_or_default().to_owned());
+        Ok(Finata::new(vec![origin], title))
+    }
 }
 
 #[async_trait::async_trait]
@@ -228,8 +251,9 @@ impl Extract for Bangumi {
     async fn extract(&mut self) -> crate::FinaResult {
         let page = self.current_page().await?;
         let aid = page["aid"].as_u64().unwrap();
+        let cid = page["cid"].as_u64().unwrap();
         let mut video = Video::with_client(self.client.clone(), Id::Av(aid), None);
-        video.extract().await
+        video.extract_with_cid(cid).await
     }
 }
 
