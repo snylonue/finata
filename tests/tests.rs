@@ -15,6 +15,16 @@ mod bilibili {
         client
     }
     #[tokio::test]
+    async fn base_extractor() {
+        let mut extractor = BaseExtractor::new(54592589, 95677892, client());
+        let res = extractor.extract().await.unwrap();
+        assert_eq!(
+            res.title(),
+            "第一部网络视频长啥样？让你大开眼界的中国网络视频发展史#01"
+        );
+        assert!(!res.raws().is_empty());
+    }
+    #[tokio::test]
     async fn av() {
         let mut extractor = Video::new("https://www.bilibili.com/video/av54592589/").unwrap();
         *extractor.client_mut() = client();

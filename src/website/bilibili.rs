@@ -32,6 +32,12 @@ pub enum Id {
     Ss(u64),
 }
 
+pub struct BaseExtractor {
+    aid: u64,
+    cid: u64,
+    client: Client,
+}
+
 pub struct Video {
     client: Client,
     id: Id,
@@ -86,6 +92,54 @@ impl Id {
     }
 }
 
+impl BaseExtractor {
+    fn as_video_api(&self) -> String {
+        format!(
+            "{}?cid={}&fnval=16&fourk=1&avid={}",
+            VIDEO_API, self.cid, self.aid
+        )
+    }
+    pub fn new(aid: u64, cid: u64, client: Client) -> Self {
+        Self { aid, cid, client }
+    }
+    pub async fn title(&mut self) -> Result<String, Error> {
+        let url = format!("{}?aid={}", VIDEO_INFO_API, self.aid).parse()?;
+        let info = self.client.send_json_request(url).await?;
+        match info["data"]["title"] {
+            Value::String(ref s) => Ok(s.to_owned()),
+            _ => err::InvalidResponse { resp: info }.fail(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Extract for BaseExtractor {
+    async fn extract(&mut self) -> crate::FinaResult {
+        let url = self.as_video_api();
+        let data = self.client.send_json_request(Url::parse(&url)?).await?;
+        let info = &data["data"]["dash"];
+        let mut tracks = Vec::new();
+        let video_url = info["video"]
+            .as_array()
+            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+            .flatten();
+        let audio_url = info["audio"]
+            .as_array()
+            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+            .flatten();
+        match (video_url, audio_url) {
+            (Some(vurl), Some(aurl)) => tracks
+                .extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)]),
+            (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
+            (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
+            _ => return err::InvalidResponse { resp: data }.fail(),
+        };
+        let origin = Origin::new(tracks, String::new());
+        let title = self.title().await.unwrap_or_default();
+        Ok(Finata::new(vec![origin], title))
+    }
+}
+
 impl Video {
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s.trim_end_matches('/'))?;
@@ -113,10 +167,12 @@ impl Video {
         }
     }
     /// Returns dash url
+    // todo: move this method into `BaseExtractor`
     pub async fn video_url_json(&self, cid: u64) -> Result<Value, Error> {
         let url = self.id.as_video_api(cid)?;
         self.client.send_json_request(url).await
     }
+    // todo: move this method into `BaseExtractor`
     pub async fn video_dash_urls(&self, cid: u64) -> Result<Value, Error> {
         let mut data = self.video_url_json(cid).await?;
         match &mut data["data"]["dash"] {
@@ -147,56 +203,20 @@ impl Video {
             _ => err::InvalidResponse { resp: playlist }.fail(),
         }
     }
-    async fn extract_with_cid(&mut self, cid: u64) -> crate::FinaResult {
-        let page = self.current_page().await?;
-        let title = self.title().await.unwrap_or_default();
-        let mut tracks = Vec::new();
-        let info = self.video_dash_urls(cid).await?;
-        let video_url = info["video"]
-            .as_array()
-            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-            .flatten();
-        let audio_url = info["audio"]
-            .as_array()
-            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-            .flatten();
-        match (video_url, audio_url) {
-            (Some(vurl), Some(aurl)) => tracks
-                .extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)]),
-            (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
-            (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
-            _ => return err::InvalidResponse { resp: info }.fail(),
-        };
-        let origin = Origin::new(tracks, page["part"].as_str().unwrap_or_default().to_owned());
-        Ok(Finata::new(vec![origin], title))
-    }
 }
 
 #[async_trait::async_trait]
 impl Extract for Video {
     async fn extract(&mut self) -> crate::FinaResult {
         let page = self.current_page().await?;
+        let info = self.video_info_json().await?;
+        let aid = match &info["data"]["aid"] {
+            Value::Number(n) => Ok(n.as_u64().expect("Bad aid")),
+            _ => err::InvalidResponse { resp: info }.fail(),
+        }?;
         let cid = extract_cid(&page)?;
-        let title = self.title().await.unwrap_or_default();
-        let mut tracks = Vec::new();
-        let info = self.video_dash_urls(cid).await?;
-        let video_url = info["video"]
-            .as_array()
-            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-            .flatten();
-        let audio_url = info["audio"]
-            .as_array()
-            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-            .flatten();
-        match (video_url, audio_url) {
-            (Some(vurl), Some(aurl)) => tracks
-                .extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)]),
-            (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
-            (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
-            _ => return err::InvalidResponse { resp: info }.fail(),
-        };
-        let origin = Origin::new(tracks, page["part"].as_str().unwrap_or_default().to_owned());
-        Ok(Finata::new(vec![origin], title))
+        let mut base_extor = BaseExtractor::new(aid, cid, self.client.clone());
+        base_extor.extract().await
     }
 }
 
@@ -252,8 +272,8 @@ impl Extract for Bangumi {
         let page = self.current_page().await?;
         let aid = page["aid"].as_u64().unwrap();
         let cid = page["cid"].as_u64().unwrap();
-        let mut video = Video::with_client(self.client.clone(), Id::Av(aid), None);
-        video.extract_with_cid(cid).await
+        let mut base_extor = BaseExtractor::new(aid, cid, self.client.clone());
+        base_extor.extract().await
     }
 }
 
