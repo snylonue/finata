@@ -95,7 +95,7 @@ impl Id {
 impl BaseExtractor {
     fn as_video_api(&self) -> String {
         format!(
-            "{}?cid={}&fnval=16&fourk=1&avid={}",
+            "{}?cid={}&qn=125&fnval=464&fourk=1&avid={}",
             VIDEO_API, self.cid, self.aid
         )
     }
@@ -117,22 +117,12 @@ impl Extract for BaseExtractor {
     async fn extract(&mut self) -> crate::FinaResult {
         let url = self.as_video_api();
         let data = self.client.send_json_request(Url::parse(&url)?).await?;
-        let info = &data["data"]["dash"];
-        let mut tracks = Vec::new();
-        let video_url = info["video"]
-            .as_array()
-            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-            .flatten();
-        let audio_url = info["audio"]
-            .as_array()
-            .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-            .flatten();
-        match (video_url, audio_url) {
-            (Some(vurl), Some(aurl)) => tracks
-                .extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)]),
-            (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
-            (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
-            _ => return err::InvalidResponse { resp: data }.fail(),
+        let tracks = match parse_dash(&data["data"]["dash"])? {
+            Some(dash) => dash,
+            None => match parse_durl(&data["data"]["durl"])? {
+                Some(durl) => durl,
+                None => return err::InvalidResponse { resp: data }.fail(),
+            },
         };
         let origin = Origin::new(tracks, String::new());
         let title = self.title().await.unwrap_or_default();
@@ -290,4 +280,42 @@ fn extract_cid(data: &Value) -> Result<u64, Error> {
     data["cid"]
         .as_u64()
         .ok_or_else(|| err::InvalidResponse { resp: data.clone() }.build())
+}
+
+// todo: return Option<Result<...>> to simplify code
+fn parse_dash(info: &Value) -> Result<Option<Vec<Track>>, Error> {
+    let mut tracks = Vec::new();
+    let video_url = info["video"]
+        .as_array()
+        .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+        .flatten();
+    let audio_url = info["audio"]
+        .as_array()
+        .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
+        .flatten();
+    match (video_url, audio_url) {
+        (Some(vurl), Some(aurl)) => {
+            tracks.extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)])
+        }
+        (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
+        (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
+        _ => return Ok(None),
+    };
+    Ok(Some(tracks))
+}
+fn parse_durl(info: &Value) -> Result<Option<Vec<Track>>, Error> {
+    match info.as_array() {
+        Some(urls) => {
+            let mut tracks = Vec::with_capacity(urls.len());
+            // need sorting by order probably
+            for i in urls {
+                match &i["url"] {
+                    Value::String(url) => tracks.push(Track::Video(url.parse()?)),
+                    _ => return Ok(None),
+                }
+            }
+            Ok(Some(tracks))
+        }
+        None => Ok(None),
+    }
 }

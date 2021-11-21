@@ -62,6 +62,14 @@ mod bilibili {
         assert_eq!(res.title(), "【1月】路人女主的养成方法 00");
         assert!(!res.raws().is_empty());
     }
+    #[tokio::test]
+    async fn fix_old() {
+        let mut extractor = Bangumi::new("https://www.bilibili.com/bangumi/play/ss5051").unwrap();
+        *extractor.client_mut() = client();
+        let res = extractor.extract().await.unwrap();
+        assert_eq!(res.title(), "【剧场版】planetarian ～星之人～【独家正版】");
+        assert!(!res.raws().is_empty());
+    }
 }
 
 #[cfg(test)]
