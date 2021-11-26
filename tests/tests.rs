@@ -81,7 +81,10 @@ mod netease_music {
     async fn song() {
         let mut extractor = Song::new("https://music.163.com/#/song?id=1458308282").unwrap();
         let res = extractor.extract().await.unwrap();
-        assert_eq!(res.title(), "嘘月（「想哭的我戴上猫的面具」片尾曲）（翻自 ヨルシカ）");
+        assert_eq!(
+            res.title(),
+            "嘘月（「想哭的我戴上猫的面具」片尾曲）（翻自 ヨルシカ）"
+        );
         assert!(!res.raws().is_empty())
     }
 }
