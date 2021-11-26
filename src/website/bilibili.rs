@@ -117,12 +117,12 @@ impl Extract for BaseExtractor {
     async fn extract(&mut self) -> crate::FinaResult {
         let url = self.as_video_api();
         let data = self.client.send_json_request(Url::parse(&url)?).await?;
-        let tracks = match parse_dash(&data["data"]["dash"])? {
-            Some(dash) => dash,
-            None => match parse_durl(&data["data"]["durl"])? {
-                Some(durl) => durl,
-                None => return err::InvalidResponse { resp: data }.fail(),
-            },
+        let tracks = match parse_dash(&data["data"]["dash"])
+            .transpose()
+            .or_else(|| parse_durl(&data["data"]["durl"]).transpose())
+        {
+            Some(Ok(tracks)) => tracks,
+            Some(Err(_)) | None => return Err(Error::InvalidResponse { resp: data.clone() }),
         };
         let origin = Origin::new(tracks, String::new());
         let title = self.title().await.unwrap_or_default();
@@ -282,7 +282,6 @@ fn extract_cid(data: &Value) -> Result<u64, Error> {
         .ok_or_else(|| err::InvalidResponse { resp: data.clone() }.build())
 }
 
-// todo: return Option<Result<...>> to simplify code
 fn parse_dash(info: &Value) -> Result<Option<Vec<Track>>, Error> {
     let mut tracks = Vec::new();
     let video_url = info["video"]
