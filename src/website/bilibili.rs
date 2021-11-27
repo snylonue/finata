@@ -122,7 +122,7 @@ impl Extract for BaseExtractor {
             .or_else(|| parse_durl(&data["data"]["durl"]).transpose())
         {
             Some(Ok(tracks)) => tracks,
-            Some(Err(_)) | None => return Err(Error::InvalidResponse { resp: data.clone() }),
+            Some(Err(_)) | None => return err::InvalidResponse { resp: data }.fail(),
         };
         let origin = Origin::new(tracks, String::new());
         let title = self.title().await.unwrap_or_default();
@@ -283,7 +283,6 @@ fn extract_cid(data: &Value) -> Result<u64, Error> {
 }
 
 fn parse_dash(info: &Value) -> Result<Option<Vec<Track>>, Error> {
-    let mut tracks = Vec::new();
     let video_url = info["video"]
         .as_array()
         .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
@@ -292,18 +291,18 @@ fn parse_dash(info: &Value) -> Result<Option<Vec<Track>>, Error> {
         .as_array()
         .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
         .flatten();
-    match (video_url, audio_url) {
-        (Some(vurl), Some(aurl)) => {
-            tracks.extend_from_slice(&[Track::Video(vurl.parse()?), Track::Audio(aurl.parse()?)])
-        }
-        (Some(url), _) => tracks.push(Track::Video(url.parse()?)),
-        (_, Some(url)) => tracks.push(Track::Audio(url.parse()?)),
-        _ => return Ok(None),
-    };
-    Ok(Some(tracks))
+    Ok(match (video_url, audio_url) {
+        (Some(vurl), Some(aurl)) => Some(vec![
+            Track::Video(vurl.parse()?),
+            Track::Audio(aurl.parse()?),
+        ]),
+        (Some(url), _) => Some(vec![Track::Video(url.parse()?)]),
+        (_, Some(url)) => Some(vec![Track::Audio(url.parse()?)]),
+        _ => None,
+    })
 }
 fn parse_durl(info: &Value) -> Result<Option<Vec<Track>>, Error> {
-    match info.as_array() {
+    Ok(match info.as_array() {
         Some(urls) => {
             let mut tracks = Vec::with_capacity(urls.len());
             // need sorting by order probably
@@ -313,8 +312,8 @@ fn parse_durl(info: &Value) -> Result<Option<Vec<Track>>, Error> {
                     _ => return Ok(None),
                 }
             }
-            Ok(Some(tracks))
+            Some(tracks)
         }
-        None => Ok(None),
-    }
+        None => None,
+    })
 }

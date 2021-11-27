@@ -139,7 +139,7 @@ impl Extract for Collection {
         loop {
             let url = Url::parse_with_params(
                 &base_url,
-                &[
+                [
                     ("tag", ""),
                     ("offset", &offset.to_string()),
                     ("limit", &LIMIT.to_string()),
