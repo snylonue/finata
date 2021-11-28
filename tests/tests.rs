@@ -88,3 +88,17 @@ mod netease_music {
         assert!(!res.raws().is_empty())
     }
 }
+
+#[cfg(test)]
+mod pixiv {
+    use finata::website::pixiv::*;
+    use finata::Extract;
+
+    #[tokio::test]
+    async fn pixiv() {
+        let mut extractor = Pixiv::with_pid(92386069.to_string());
+        let res = extractor.extract().await.unwrap();
+        assert_eq!(res.title(), "「とじこめて」");
+        assert_eq!(res.raws()[0].tracks.len(), 2);
+    }
+}

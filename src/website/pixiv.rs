@@ -1,5 +1,6 @@
 use crate::Config;
 use crate::Extract;
+use crate::Track;
 use crate::{error as err, utils};
 use crate::{utils::Client, Origin};
 use crate::{Error, Finata};
@@ -79,19 +80,20 @@ impl Extract for Pixiv {
     async fn extract(&mut self) -> crate::FinaResult {
         let title = self.title().await?;
         let urls = self.raw_urls().await?;
-        let raws = urls
+        let tracks = urls
             .into_iter()
             .map(move |v| {
                 let url_data = &v["urls"]["original"];
                 match url_data {
                     Value::String(ref url) => Url::parse(url)
                         .map_err(Into::into)
-                        .map(|raw| Origin::image(raw, String::new())),
+                        .map(|raw| Track::Image(raw)),
                     _ => err::InvalidResponse { resp: v }.fail(),
                 }
             })
             .collect::<Result<_, Error>>()?;
-        Ok(Finata::new(raws, title))
+        let raws = Origin::new(tracks, title.clone());
+        Ok(Finata::new(vec![raws], title))
     }
 }
 
@@ -161,7 +163,7 @@ impl Extract for Collection {
                             .await
                             .unwrap_or_default()
                             .into_parts();
-                        origins.extend(dbg!(extraction));
+                        origins.extend(extraction);
                     }
                 }
                 _ => return err::InvalidResponse { resp: coll }.fail(),
