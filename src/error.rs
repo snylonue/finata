@@ -26,14 +26,3 @@ pub enum Error {
         source: reqwest::Error,
     },
 }
-
-#[derive(Debug, Snafu)]
-pub struct FinataError {
-    kind: Error,
-}
-
-impl From<Error> for FinataError {
-    fn from(kind: Error) -> Self {
-        Self { kind }
-    }
-}
