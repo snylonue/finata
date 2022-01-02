@@ -87,7 +87,7 @@ impl Extract for Pixiv {
                 match url_data {
                     Value::String(ref url) => Url::parse(url)
                         .map_err(Into::into)
-                        .map(|raw| Track::Image(raw)),
+                        .map(Track::Image),
                     _ => err::InvalidResponse { resp: v }.fail(),
                 }
             })
