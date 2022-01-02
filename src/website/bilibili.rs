@@ -234,6 +234,7 @@ impl Bangumi {
             _ => Err(Error::InvalidUrl { url }),
         }
     }
+    #[deprecated = "this method does not return a complete playlist"]
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = self.id.as_cid_api()?;
         let data = self.client.send_json_request(url).await?;
@@ -243,7 +244,20 @@ impl Bangumi {
         }
     }
     async fn current_page(&self) -> Result<Value, Error> {
-        let playlist = self.playlist_json().await?;
+        let url = self.id.as_cid_api()?;
+        let data = self.client.send_json_request(url).await?;
+        let mut playlist = Vec::new();
+        if let Value::Array(ref eps) = data["result"]["episodes"] {
+            playlist.extend_from_slice(eps);
+        }
+        // only main episodes lie in data["result"]["episodes"]
+        if let Value::Array(ref sections) = data["result"]["section"] {
+            for section in sections {
+                if let Value::Array(ref eps) = section["episodes"] {
+                    playlist.extend_from_slice(eps);
+                }
+            }
+        }
         let page = match self.id {
             Id::Ss(_) => playlist.first(),
             Id::Ep(epid) => playlist.iter().find(|ep| ep["id"].as_u64() == Some(epid)),
@@ -251,7 +265,7 @@ impl Bangumi {
         };
         match page {
             Some(res) => Ok(res.to_owned()),
-            None => err::InvalidResponse { resp: playlist }.fail(),
+            None => err::InvalidResponse { resp: data }.fail(),
         }
     }
 }

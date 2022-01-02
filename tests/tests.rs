@@ -70,6 +70,14 @@ mod bilibili {
         assert_eq!(res.title(), "【剧场版】planetarian ～星之人～【独家正版】");
         assert!(!res.raws().is_empty());
     }
+    #[tokio::test]
+    async fn fix_pv() {
+        let mut extractor = Bangumi::new("https://www.bilibili.com/bangumi/play/ep417116").unwrap();
+        *extractor.client_mut() = client();
+        let res = extractor.extract().await.unwrap();
+        assert_eq!(res.title(), "《世界尽头的圣骑士》PV2");
+        assert!(!res.raws().is_empty());
+    }
 }
 
 #[cfg(test)]
