@@ -85,9 +85,7 @@ impl Extract for Pixiv {
             .map(move |v| {
                 let url_data = &v["urls"]["original"];
                 match url_data {
-                    Value::String(ref url) => Url::parse(url)
-                        .map_err(Into::into)
-                        .map(Track::Image),
+                    Value::String(ref url) => Url::parse(url).map_err(Into::into).map(Track::Image),
                     _ => err::InvalidResponse { resp: v }.fail(),
                 }
             })

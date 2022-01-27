@@ -1,6 +1,6 @@
 [package]
 name = "finata"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["snylonue <snylonue@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/snylonue/finata"
@@ -20,7 +20,7 @@ snafu = "0.6.10"
 async-trait = "0.1.42"
 tokio = { version = "1", features = ["rt-multi-thread"] }
 serde = "1.0"
-nescookie = "0.2"
+nescookie = "0.3"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
