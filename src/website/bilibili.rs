@@ -52,7 +52,7 @@ pub struct Bangumi {
 impl Id {
     pub fn from_url(url: &Url) -> Result<Self, Error> {
         url.path_segments()
-            .map(|mut it| it.next_back())
+            .map(|it| it.filter(|p| !p.is_empty()).next_back())
             .flatten()
             .map(Self::new)
             .flatten()
@@ -132,7 +132,7 @@ impl Extract for BaseExtractor {
 
 impl Video {
     pub fn new(s: &str) -> Result<Self, Error> {
-        let url: Url = Url::parse(s.trim_end_matches('/'))?;
+        let url: Url = Url::parse(s)?;
         let id = Id::from_url(&url)?;
         let page = url
             .query_pairs()
@@ -227,7 +227,7 @@ impl Bangumi {
         Self { client, id }
     }
     pub fn new(s: &str) -> Result<Self, Error> {
-        let url: Url = Url::parse(s.trim_end_matches('/'))?;
+        let url: Url = Url::parse(s)?;
         let id = Id::from_url(&url)?;
         match id {
             Id::Ep(_) | Id::Ss(_) => Ok(Self::with_id(id)),
