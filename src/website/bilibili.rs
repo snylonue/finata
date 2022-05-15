@@ -66,10 +66,8 @@ pub struct Live {
 impl Id {
     pub fn from_url(url: &Url) -> Result<Self, Error> {
         url.path_segments()
-            .map(|it| it.filter(|p| !p.is_empty()).next_back())
-            .flatten()
-            .map(Self::new)
-            .flatten()
+            .and_then(|it| it.filter(|p| !p.is_empty()).next_back())
+            .and_then(Self::new)
             .ok_or_else(|| Error::InvalidUrl {
                 url: url.to_owned(),
             })
@@ -347,8 +345,7 @@ impl Live {
         let url = Url::parse(s)?;
         let id = url
             .path_segments()
-            .map(|mut p| p.next_back())
-            .flatten()
+            .and_then(|mut p| p.next_back())
             .ok_or_else(|| err::InvalidUrl { url: url.clone() }.build())?
             .parse()
             .map_err(|_| err::InvalidUrl { url }.build())?;
@@ -400,12 +397,10 @@ fn extract_cid(data: &Value) -> Result<u64, Error> {
 fn parse_dash(info: &Value) -> Result<Option<Vec<Track>>, Error> {
     let video_url = info["video"]
         .as_array()
-        .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-        .flatten();
+        .and_then(|data| data.iter().find_map(|data| data["baseUrl"].as_str()));
     let audio_url = info["audio"]
         .as_array()
-        .map(|data| data.iter().find_map(|data| data["baseUrl"].as_str()))
-        .flatten();
+        .and_then(|data| data.iter().find_map(|data| data["baseUrl"].as_str()));
     Ok(match (video_url, audio_url) {
         (Some(vurl), Some(aurl)) => Some(vec![
             Track::Video(vurl.parse()?),
