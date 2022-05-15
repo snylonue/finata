@@ -82,18 +82,39 @@ mod bilibili {
 
 #[cfg(test)]
 mod netease_music {
+    use finata::utils::Client;
     use finata::website::netease_music::*;
+    use finata::Config;
     use finata::Extract;
+    use reqwest::header::*;
+
+    fn client() -> Client {
+        let mut client = Client::with_header(finata::hdmap! {
+            USER_AGENT => finata::utils::UA.clone(),
+            REFERER => "https://music.163.com",
+        });
+        *client.client_mut() = reqwest::Client::new();
+        client
+    }
 
     #[tokio::test]
     async fn song() {
         let mut extractor = Song::new("https://music.163.com/#/song?id=1458308282").unwrap();
         let res = extractor.extract().await.unwrap();
+        *extractor.client_mut() = client();
         assert_eq!(
             res.title(),
             "嘘月（「想哭的我戴上猫的面具」片尾曲）（翻自 ヨルシカ）"
         );
         assert!(!res.raws().is_empty())
+    }
+
+    #[tokio::test]
+    async fn playlist() {
+        let mut extractor = PlayList::new("https://music.163.com/#/playlist?id=406607901").unwrap();
+        let res = extractor.extract().await.unwrap();
+        *extractor.client_mut() = client();
+        assert_eq!(res.title(), "東方Project ——正作原曲合集");
     }
 }
 

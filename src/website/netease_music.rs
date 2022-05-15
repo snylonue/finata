@@ -160,14 +160,21 @@ impl Extract for PlayList {
         let track_ids = url_info["playlist"]["trackIds"]
             .as_array()
             .ok_or_else(error)?;
+        let s = futures_util::future::join_all(
+            track_ids
+                .iter()
+                .filter_map(|v| v["id"].as_u64()) // skip invalid id
+                .map(|id| async move { Song::with_id(id).raw_url().await }),
+        )
+        .await;
         let mut songs = Vec::with_capacity(track_ids.len());
-        for track_id in track_ids.iter().filter_map(|v| v["id"].as_u64()) {
-            // skip invalid id
-            match Song::with_id(track_id).raw_url().await {
+        for resp in s {
+            match resp {
                 Ok(raw_url) => songs.push(Origin::audio(raw_url, String::new())),
                 Err(e) => match e {
                     // ignore vip songs
-                    Error::InvalidResponse { ref resp } if self.ignore_vip && resp["data"][0]["code"] == -110 => {}
+                    Error::InvalidResponse { ref resp }
+                        if self.ignore_vip && resp["data"][0]["code"] == -110 => {}
                     _ => return Err(e),
                 },
             };
