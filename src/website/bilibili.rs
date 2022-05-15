@@ -345,7 +345,7 @@ impl Live {
         let url = Url::parse(s)?;
         let id = url
             .path_segments()
-            .and_then(|mut p| p.next_back())
+            .and_then(|it| it.filter(|p| !p.is_empty()).next_back())
             .ok_or_else(|| err::InvalidUrl { url: url.clone() }.build())?
             .parse()
             .map_err(|_| err::InvalidUrl { url }.build())?;
