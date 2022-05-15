@@ -19,6 +19,7 @@ pub fn choose_extractor(url: &str) -> FinaResult<Box<dyn Extractor + 'static>> {
                 Ok(Box::new(bilibili::Bangumi::new(url.as_str())?))
             }
         }
+        Some("live.bilibili.com") => Ok(Box::new(bilibili::Live::new(url.as_str())?)),
         Some("music.163.com") => {
             if url.as_str().contains("song") {
                 Ok(Box::new(netease_music::Song::new(url.as_str())?))

@@ -23,6 +23,10 @@ const BANGUMI_CID_API: &str = "https://api.bilibili.com/pgc/view/web/season";
 const VIDEO_API: &str = "https://api.bilibili.com/x/player/playurl";
 /// ?bvid={} or ?aid={}
 pub const VIDEO_INFO_API: &str = "https://api.bilibili.com/x/web-interface/view";
+/// ?cid={}&quality={}&platform={}
+pub const LIVE_API: &str = "https://api.live.bilibili.com/room/v1/Room/playUrl";
+/// ?id={}
+pub const LIVE_INFO_API: &str = "http://api.live.bilibili.com/room/v1/Room/room_init";
 
 #[derive(Debug)]
 pub enum Id {
@@ -47,6 +51,16 @@ pub struct Video {
 pub struct Bangumi {
     client: Client,
     id: Id,
+}
+
+pub struct BaseLiveExtractor {
+    cid: u64,
+    client: Client,
+}
+
+pub struct Live {
+    id: u64,
+    client: Client,
 }
 
 impl Id {
@@ -290,6 +304,93 @@ impl Config for Bangumi {
     }
 }
 
+impl BaseLiveExtractor {
+    pub fn new(cid: u64, client: Client) -> Self {
+        Self { cid, client }
+    }
+
+    pub fn as_live_url(&self) -> String {
+        let cid = self.cid;
+        format!("{LIVE_API}?cid={cid}&platform=h5&quality=4")
+    }
+
+    async fn _extract(&mut self) -> crate::FinaResult {
+        let url = self.as_live_url();
+        let data = self.client.send_json_request(url.parse()?).await?;
+        let live_url = match data["data"]["durl"][0]["url"] {
+            Value::String(ref s) => Url::parse(s)?,
+            _ => return err::InvalidResponse { resp: data }.fail(),
+        };
+        let origin = Origin::video(live_url, String::new());
+        Ok(Finata::new(vec![origin], String::new()))
+    }
+}
+
+#[async_trait::async_trait]
+impl Extract for BaseLiveExtractor {
+    async fn extract(&mut self) -> crate::FinaResult {
+        self._extract().await
+    }
+}
+
+impl Config for BaseLiveExtractor {
+    fn client(&self) -> &Client {
+        &self.client
+    }
+    fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
+    }
+}
+
+impl Live {
+    pub fn new(s: &str) -> Result<Self, Error> {
+        let url = Url::parse(s)?;
+        let id = url
+            .path_segments()
+            .map(|mut p| p.next_back())
+            .flatten()
+            .ok_or_else(|| err::InvalidUrl { url: url.clone() }.build())?
+            .parse()
+            .map_err(|_| err::InvalidUrl { url }.build())?;
+        Ok(Self {
+            id,
+            client: Client::new(),
+        })
+    }
+
+    pub fn as_info_url(&self) -> String {
+        let id = self.id;
+        format!("{LIVE_INFO_API}?id={id}")
+    }
+
+    pub async fn _extract(&mut self) -> crate::FinaResult {
+        let url = self.as_info_url();
+        let data = self.client.send_json_request(url.parse()?).await?;
+        let cid = match data["data"]["room_id"] {
+            Value::Number(ref cid) if cid.is_u64() => cid.as_u64().unwrap(),
+            _ => return err::InvalidResponse { resp: data }.fail(),
+        };
+        let mut base_extor = BaseLiveExtractor::new(cid, self.client.clone());
+        base_extor.extract().await
+    }
+}
+
+#[async_trait::async_trait]
+impl Extract for Live {
+    async fn extract(&mut self) -> crate::FinaResult {
+        self._extract().await
+    }
+}
+
+impl Config for Live {
+    fn client(&self) -> &Client {
+        &self.client
+    }
+    fn client_mut(&mut self) -> &mut Client {
+        &mut self.client
+    }
+}
+
 fn extract_cid(data: &Value) -> Result<u64, Error> {
     data["cid"]
         .as_u64()
@@ -315,6 +416,7 @@ fn parse_dash(info: &Value) -> Result<Option<Vec<Track>>, Error> {
         _ => None,
     })
 }
+
 fn parse_durl(info: &Value) -> Result<Option<Vec<Track>>, Error> {
     Ok(match info.as_array() {
         Some(urls) => {
