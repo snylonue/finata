@@ -167,7 +167,7 @@ impl Extract for PlayList {
                 Ok(raw_url) => songs.push(Origin::audio(raw_url, String::new())),
                 Err(e) => match e {
                     // ignore vip songs
-                    Error::InvalidResponse { ref resp } if resp["data"][0]["code"] == -110 => {}
+                    Error::InvalidResponse { ref resp } if self.ignore_vip && resp["data"][0]["code"] == -110 => {}
                     _ => return Err(e),
                 },
             };
