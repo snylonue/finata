@@ -27,6 +27,8 @@ pub const VIDEO_INFO_API: &str = "https://api.bilibili.com/x/web-interface/view"
 pub const LIVE_API: &str = "https://api.live.bilibili.com/room/v1/Room/playUrl";
 /// ?id={}
 pub const LIVE_INFO_API: &str = "http://api.live.bilibili.com/room/v1/Room/room_init";
+/// ?mid={}
+pub const SPACE_INFO_API: &str = "https://api.bilibili.com/x/space/acc/info";
 
 #[derive(Debug)]
 pub enum Id {
@@ -360,15 +362,29 @@ impl Live {
         format!("{LIVE_INFO_API}?id={id}")
     }
 
-    pub async fn _extract(&mut self) -> crate::FinaResult {
+    async fn title(&self, uid: u64) -> Result<String, Error> {
+        let url = format!("{SPACE_INFO_API}?mid={uid}");
+        let data = self.client.send_json_request(url.parse()?).await?;
+        match data["data"]["live_room"]["title"] {
+            Value::String(ref title) => Ok(title.to_owned()),
+            _ => err::InvalidResponse { resp: data }.fail(),
+        }
+    }
+
+    async fn _extract(&self) -> crate::FinaResult {
         let url = self.as_info_url();
         let data = self.client.send_json_request(url.parse()?).await?;
         let cid = match data["data"]["room_id"] {
             Value::Number(ref cid) if cid.is_u64() => cid.as_u64().unwrap(),
             _ => return err::InvalidResponse { resp: data }.fail(),
         };
+        let uid = match data["data"]["uid"] {
+            Value::Number(ref uid) if uid.is_u64() => uid.as_u64().unwrap(),
+            _ => return err::InvalidResponse { resp: data }.fail(),
+        };
         let mut base_extor = BaseLiveExtractor::new(cid, self.client.clone());
-        base_extor.extract().await
+        let (raw, _) = base_extor.extract().await?.into_parts();
+        Ok(Finata::new(raw, self.title(uid).await?))
     }
 }
 
