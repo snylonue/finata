@@ -109,7 +109,7 @@ impl Id {
 impl BaseExtractor {
     fn as_video_api(&self) -> String {
         format!(
-            "{}?cid={}&qn=125&fnval=464&fourk=1&avid={}",
+            "{}?cid={}&qn=127&fnval=2000&fourk=1&avid={}",
             VIDEO_API, self.cid, self.aid
         )
     }
