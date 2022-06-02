@@ -2,7 +2,7 @@
 mod bilibili {
     use finata::utils::Client;
     use finata::website::bilibili::*;
-    use finata::Config;
+    use finata::AsClient;
     use finata::Extract;
     use reqwest::header::*;
 
@@ -84,7 +84,7 @@ mod bilibili {
 mod netease_music {
     use finata::utils::Client;
     use finata::website::netease_music::*;
-    use finata::Config;
+    use finata::AsClient;
     use finata::Extract;
     use reqwest::header::*;
 

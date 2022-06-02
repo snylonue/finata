@@ -1,5 +1,5 @@
 use crate::utils::Client;
-use crate::Config;
+use crate::AsClient;
 use crate::{error as err, Origin};
 use crate::{utils, Track};
 use crate::{Error, Extract, Finata};
@@ -224,7 +224,7 @@ impl Extract for Video {
     }
 }
 
-impl Config for Video {
+impl AsClient for Video {
     fn client(&self) -> &Client {
         &self.client
     }
@@ -295,7 +295,7 @@ impl Extract for Bangumi {
     }
 }
 
-impl Config for Bangumi {
+impl AsClient for Bangumi {
     fn client(&self) -> &Client {
         &self.client
     }
@@ -333,7 +333,7 @@ impl Extract for BaseLiveExtractor {
     }
 }
 
-impl Config for BaseLiveExtractor {
+impl AsClient for BaseLiveExtractor {
     fn client(&self) -> &Client {
         &self.client
     }
@@ -395,7 +395,7 @@ impl Extract for Live {
     }
 }
 
-impl Config for Live {
+impl AsClient for Live {
     fn client(&self) -> &Client {
         &self.client
     }

@@ -1,12 +1,12 @@
-use crate::{Config, Error, Extract, FinaResult};
+use crate::{AsClient, Error, Extract, FinaResult};
 
 pub mod bilibili;
 pub mod netease_music;
 pub mod pixiv;
 
-pub trait Extractor: Extract + Config {}
+pub trait Extractor: Extract + AsClient {}
 
-impl<T: Extract + Config> Extractor for T {}
+impl<T: Extract + AsClient> Extractor for T {}
 
 pub fn choose_extractor(url: &str) -> FinaResult<Box<dyn Extractor + 'static>> {
     let url = url::Url::parse(url)?;

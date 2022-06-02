@@ -1,4 +1,4 @@
-use crate::Config;
+use crate::AsClient;
 use crate::Extract;
 use crate::Track;
 use crate::{error as err, utils};
@@ -95,7 +95,7 @@ impl Extract for Pixiv {
     }
 }
 
-impl Config for Pixiv {
+impl AsClient for Pixiv {
     fn client(&self) -> &Client {
         &self.client
     }
@@ -175,7 +175,7 @@ impl Extract for Collection {
     }
 }
 
-impl Config for Collection {
+impl AsClient for Collection {
     fn client(&self) -> &Client {
         &self.client
     }

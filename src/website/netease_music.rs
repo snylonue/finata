@@ -1,4 +1,4 @@
-use crate::Config;
+use crate::AsClient;
 use crate::{error as err, FinaResult};
 use crate::{utils, Error, Extract, Finata, Origin};
 use lazy_static::lazy_static;
@@ -132,7 +132,7 @@ impl Extract for Song {
     }
 }
 
-impl Config for Song {
+impl AsClient for Song {
     fn client(&self) -> &Client {
         &self.client
     }
@@ -187,7 +187,7 @@ impl Extract for PlayList {
     }
 }
 
-impl Config for PlayList {
+impl AsClient for PlayList {
     fn client(&self) -> &Client {
         &self.client
     }

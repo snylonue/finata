@@ -21,7 +21,7 @@ pub trait Extract {
     async fn extract(&mut self) -> FinaResult;
 }
 
-pub trait Config {
+pub trait AsClient {
     fn client(&self) -> &Client;
     fn client_mut(&mut self) -> &mut Client;
 }
