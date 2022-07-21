@@ -9,8 +9,9 @@ pub mod utils;
 pub mod website;
 
 pub use crate::error::*;
+pub use Playlist as Finata;
 
-pub type FinaResult<T = Finata> = Result<T, Error>;
+pub type FinaResult<T = Playlist> = Result<T, Error>;
 
 lazy_static! {
     static ref RUNTIME: Runtime = Runtime::new().unwrap();
@@ -51,7 +52,7 @@ pub struct Origin {
 }
 
 #[derive(Debug, PartialEq, Default)]
-pub struct Finata {
+pub struct Playlist {
     raws: Vec<Origin>,
     title: String,
 }
@@ -90,7 +91,7 @@ impl Origin {
     }
 }
 
-impl Finata {
+impl Playlist {
     pub fn new(raws: Vec<Origin>, title: String) -> Self {
         Self { raws, title }
     }

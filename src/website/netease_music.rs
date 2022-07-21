@@ -1,6 +1,6 @@
 use crate::AsClient;
 use crate::{error as err, FinaResult};
-use crate::{utils, Error, Extract, Finata, Origin};
+use crate::{utils, Error, Extract, Playlist, Origin};
 use lazy_static::lazy_static;
 use reqwest::header;
 use serde_json::Value;
@@ -128,7 +128,7 @@ impl Extract for Song {
     async fn extract(&mut self) -> FinaResult {
         let url = self.raw_url().await?;
         let title = self.title().await?;
-        Ok(Finata::new(vec![Origin::audio(url, String::new())], title))
+        Ok(Playlist::new(vec![Origin::audio(url, String::new())], title))
     }
 }
 
@@ -183,7 +183,7 @@ impl Extract for PlayList {
             .as_str()
             .unwrap_or("")
             .to_owned();
-        Ok(Finata::new(songs, name))
+        Ok(Playlist::new(songs, name))
     }
 }
 

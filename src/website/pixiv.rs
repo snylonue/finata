@@ -3,7 +3,7 @@ use crate::Extract;
 use crate::Track;
 use crate::{error as err, utils};
 use crate::{utils::Client, Origin};
-use crate::{Error, Finata};
+use crate::{Error, Playlist};
 use lazy_static::lazy_static;
 use reqwest::header;
 use serde_json::Value;
@@ -91,7 +91,7 @@ impl Extract for Pixiv {
             })
             .collect::<Result<_, Error>>()?;
         let raws = Origin::new(tracks, title.clone());
-        Ok(Finata::new(vec![raws], title))
+        Ok(Playlist::new(vec![raws], title))
     }
 }
 
@@ -168,7 +168,7 @@ impl Extract for Collection {
             }
             // if total is unavaliable or less than offset, return
             if offset >= coll["body"]["total"].as_u64().unwrap_or(0) {
-                break Ok(Finata::new(origins, String::new()));
+                break Ok(Playlist::new(origins, String::new()));
             }
             offset += LIMIT;
         }

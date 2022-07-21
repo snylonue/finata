@@ -2,7 +2,7 @@ use crate::utils::Client;
 use crate::AsClient;
 use crate::{error as err, Origin};
 use crate::{utils, Track};
-use crate::{Error, Extract, Finata};
+use crate::{Error, Extract, Playlist};
 use lazy_static::lazy_static;
 use reqwest::header;
 use serde_json::Value;
@@ -140,7 +140,7 @@ impl Extract for BaseExtractor {
         };
         let origin = Origin::new(tracks, String::new());
         let title = self.title().await.unwrap_or_default();
-        Ok(Finata::new(vec![origin], title))
+        Ok(Playlist::new(vec![origin], title))
     }
 }
 
@@ -322,7 +322,7 @@ impl BaseLiveExtractor {
             _ => return err::InvalidResponse { resp: data }.fail(),
         };
         let origin = Origin::video(live_url, String::new());
-        Ok(Finata::new(vec![origin], String::new()))
+        Ok(Playlist::new(vec![origin], String::new()))
     }
 }
 
@@ -384,7 +384,7 @@ impl Live {
         };
         let mut base_extor = BaseLiveExtractor::new(cid, self.client.clone());
         let (raw, _) = base_extor.extract().await?.into_parts();
-        Ok(Finata::new(raw, self.title(uid).await?))
+        Ok(Playlist::new(raw, self.title(uid).await?))
     }
 }
 
