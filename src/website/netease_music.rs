@@ -1,8 +1,6 @@
-use crate::AsClient;
-use crate::{error as err, FinaResult};
-use crate::{utils, Error, Extract, Playlist, Origin};
-use lazy_static::lazy_static;
-use reqwest::header;
+use crate::{error as err, utils, AsClient, Error, Extract, FinaResult, Origin, Playlist};
+use once_cell::sync::Lazy;
+use reqwest::header::{self, HeaderMap};
 use serde_json::Value;
 use sugars::hmap;
 use url::Url;
@@ -12,12 +10,12 @@ const SONG_URL_API: &str = "https://music.163.com/api/song/enhance/player/url";
 const SONG_DETIAL_API: &str = "https://music.163.com/api/song/detail";
 const PLAYLIST_DETAIL_API: &str = "https://music.163.com/api/v3/playlist/detail";
 
-lazy_static! {
-    static ref HEADERS: header::HeaderMap = crate::hdmap! {
+static HEADERS: Lazy<HeaderMap> = Lazy::new(|| {
+    crate::hdmap! {
         header::USER_AGENT => utils::UA.clone(),
         header::REFERER => "https://music.163.com",
-    };
-}
+    }
+});
 
 #[derive(Debug, Clone)]
 pub struct Song {
@@ -128,7 +126,10 @@ impl Extract for Song {
     async fn extract(&mut self) -> FinaResult {
         let url = self.raw_url().await?;
         let title = self.title().await?;
-        Ok(Playlist::new(vec![Origin::audio(url, String::new())], title))
+        Ok(Playlist::new(
+            vec![Origin::audio(url, String::new())],
+            title,
+        ))
     }
 }
 

@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::fmt::Debug;
 use tokio::runtime::Runtime;
 use url::Url;
@@ -13,9 +13,7 @@ pub use Playlist as Finata;
 
 pub type FinaResult<T = Playlist> = Result<T, Error>;
 
-lazy_static! {
-    static ref RUNTIME: Runtime = Runtime::new().unwrap();
-}
+static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
 
 #[async_trait::async_trait]
 pub trait Extract {

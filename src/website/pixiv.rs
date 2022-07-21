@@ -1,23 +1,21 @@
-use crate::AsClient;
-use crate::Extract;
-use crate::Track;
-use crate::{error as err, utils};
-use crate::{utils::Client, Origin};
-use crate::{Error, Playlist};
-use lazy_static::lazy_static;
-use reqwest::header;
+use crate::{
+    error as err, utils, utils::Client, AsClient, Error, Extract, Origin, Playlist, Track,
+};
+use once_cell::sync::Lazy;
+use reqwest::{header, header::HeaderMap};
 use serde_json::Value;
 use url::Url;
 
 const LIMIT: u64 = 96;
 
-lazy_static! {
-    static ref HEADERS: header::HeaderMap = crate::hdmap! {
+static HEADERS: Lazy<HeaderMap> = Lazy::new(|| {
+    crate::hdmap! {
         header::USER_AGENT => utils::UA.clone(),
         header::REFERER => "https://www.pixiv.net/",
-    };
-    static ref IMAGE_API: Url = Url::parse("https://www.pixiv.net/ajax/illust/").unwrap();
-}
+    }
+});
+static IMAGE_API: Lazy<Url> =
+    Lazy::new(|| Url::parse("https://www.pixiv.net/ajax/illust/").unwrap());
 
 #[derive(Debug)]
 pub struct Pixiv {

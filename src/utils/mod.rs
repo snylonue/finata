@@ -16,5 +16,4 @@ macro_rules! hdmap {
 
 pub mod client;
 
-pub use self::client::Client;
-pub use self::client::UA;
+pub use self::client::{Client, UA};

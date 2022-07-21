@@ -1,18 +1,19 @@
 use crate::error as err;
-use lazy_static::lazy_static;
-use reqwest::header;
-use reqwest::header::HeaderMap;
-use reqwest::header::HeaderValue;
+use once_cell::sync::Lazy;
+use reqwest::{
+    header,
+    header::{HeaderMap, HeaderValue},
+};
 use serde_json::Value;
-use snafu::ResultExt;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use std::path::Path;
 use url::Url;
 
-lazy_static! {
-    pub static ref CLIENT: reqwest::Client = reqwest::ClientBuilder::new().gzip(true).build().unwrap();
-    pub static ref UA: HeaderValue = HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36");
-}
+pub static CLIENT: Lazy<reqwest::Client> =
+    Lazy::new(|| reqwest::ClientBuilder::new().gzip(true).build().unwrap());
+pub static UA: Lazy<HeaderValue> = Lazy::new(|| {
+    HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36")
+});
 
 #[derive(Debug, Clone)]
 pub struct Client {

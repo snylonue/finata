@@ -1,9 +1,6 @@
 #[cfg(test)]
 mod bilibili {
-    use finata::utils::Client;
-    use finata::website::bilibili::*;
-    use finata::AsClient;
-    use finata::Extract;
+    use finata::{utils::Client, website::bilibili::*, AsClient, Extract};
     use reqwest::header::*;
 
     fn client() -> Client {
@@ -82,10 +79,7 @@ mod bilibili {
 
 #[cfg(test)]
 mod netease_music {
-    use finata::utils::Client;
-    use finata::website::netease_music::*;
-    use finata::AsClient;
-    use finata::Extract;
+    use finata::{utils::Client, website::netease_music::*, AsClient, Extract};
     use reqwest::header::*;
 
     fn client() -> Client {
@@ -120,8 +114,7 @@ mod netease_music {
 
 #[cfg(test)]
 mod pixiv {
-    use finata::website::pixiv::*;
-    use finata::Extract;
+    use finata::{website::pixiv::*, Extract};
 
     #[tokio::test]
     async fn pixiv() {
