@@ -55,10 +55,8 @@ impl Client {
         self.push_cookie(&cookies)?;
         Ok(())
     }
-    pub async fn send_json_request(&self, url: Url) -> Result<Value, err::Error> {
-        self.send_json_request_generic(url).await
-    }
-    pub(crate) async fn send_json_request_generic<T: serde::de::DeserializeOwned>(
+    // todo: rename to get_json
+    pub async fn send_json_request<T: serde::de::DeserializeOwned>(
         &self,
         url: Url,
     ) -> Result<T, err::Error> {

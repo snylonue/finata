@@ -18,7 +18,6 @@ url = "2"
 snafu = "0.6.10"
 async-trait = "0.1.42"
 tokio = { version = "1", features = ["rt-multi-thread"] }
-serde = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 nescookie = "0.3"
 futures-util = "0.3"

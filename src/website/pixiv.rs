@@ -145,7 +145,7 @@ impl Extract for Collection {
                 ],
             )
             .unwrap();
-            let coll = self.client().send_json_request(url).await?;
+            let coll: Value = self.client().send_json_request(url).await?;
             match &coll["body"]["works"] {
                 Value::Array(works) => {
                     for work in works {

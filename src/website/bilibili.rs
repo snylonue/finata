@@ -116,7 +116,7 @@ impl BaseExtractor {
     }
     pub async fn title(&mut self) -> Result<String, Error> {
         let url = format!("{}?aid={}", VIDEO_INFO_API, self.aid).parse()?;
-        let info = self.client.send_json_request(url).await?;
+        let info: Value = self.client.send_json_request(url).await?;
         match info["data"]["title"] {
             Value::String(ref s) => Ok(s.to_owned()),
             _ => err::InvalidResponse { resp: info }.fail(),
@@ -128,7 +128,7 @@ impl BaseExtractor {
 impl Extract for BaseExtractor {
     async fn extract(&mut self) -> crate::FinaResult {
         let url = self.as_video_api();
-        let data = self.client.send_json_request(Url::parse(&url)?).await?;
+        let data: Value = self.client.send_json_request(Url::parse(&url)?).await?;
         let tracks = match parse_dash(&data["data"]["dash"])
             .transpose()
             .or_else(|| parse_durl(&data["data"]["durl"]).transpose())
@@ -162,7 +162,7 @@ impl Video {
     }
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = self.id.as_cid_api()?;
-        let data = self.client.send_json_request(url).await?;
+        let data: Value = self.client.send_json_request(url).await?;
         match data["data"] {
             Value::Array(ref cids) => Ok(cids.clone()),
             _ => err::InvalidResponse { resp: data }.fail(),
@@ -249,7 +249,7 @@ impl Bangumi {
     #[deprecated = "this method does not return a complete playlist"]
     pub async fn playlist_json(&self) -> Result<Vec<Value>, Error> {
         let url = self.id.as_cid_api()?;
-        let data = self.client.send_json_request(url).await?;
+        let data: Value = self.client.send_json_request(url).await?;
         match data["result"]["episodes"] {
             Value::Array(ref eps) => Ok(eps.clone()),
             _ => err::InvalidResponse { resp: data }.fail(),
@@ -257,7 +257,7 @@ impl Bangumi {
     }
     async fn current_page(&self) -> Result<Value, Error> {
         let url = self.id.as_cid_api()?;
-        let data = self.client.send_json_request(url).await?;
+        let data: Value = self.client.send_json_request(url).await?;
         let mut playlist = Vec::new();
         if let Value::Array(ref eps) = data["result"]["episodes"] {
             playlist.extend_from_slice(eps);
@@ -314,7 +314,7 @@ impl BaseLiveExtractor {
 
     async fn _extract(&mut self) -> crate::FinaResult {
         let url = self.as_live_url();
-        let data = self.client.send_json_request(url.parse()?).await?;
+        let data: Value = self.client.send_json_request(url.parse()?).await?;
         let live_url = match data["data"]["durl"][0]["url"] {
             Value::String(ref s) => Url::parse(s)?,
             _ => return err::InvalidResponse { resp: data }.fail(),
@@ -362,7 +362,7 @@ impl Live {
 
     async fn title(&self, uid: u64) -> Result<String, Error> {
         let url = format!("{SPACE_INFO_API}?mid={uid}");
-        let data = self.client.send_json_request(url.parse()?).await?;
+        let data: Value = self.client.send_json_request(url.parse()?).await?;
         match data["data"]["live_room"]["title"] {
             Value::String(ref title) => Ok(title.to_owned()),
             _ => err::InvalidResponse { resp: data }.fail(),
@@ -371,7 +371,7 @@ impl Live {
 
     async fn _extract(&self) -> crate::FinaResult {
         let url = self.as_info_url();
-        let data = self.client.send_json_request(url.parse()?).await?;
+        let data: Value = self.client.send_json_request(url.parse()?).await?;
         let cid = match data["data"]["room_id"] {
             Value::Number(ref cid) if cid.is_u64() => cid.as_u64().unwrap(),
             _ => return err::InvalidResponse { resp: data }.fail(),

@@ -45,7 +45,7 @@ impl Live {
         );
         let response = self
             .client
-            .send_json_request_generic::<Response>(url.parse()?)
+            .send_json_request::<Response>(url.parse()?)
             .await?;
         let pl = self
             .client
