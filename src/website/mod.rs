@@ -3,6 +3,7 @@ use crate::{AsClient, Error, Extract, FinaResult};
 pub mod bilibili;
 pub mod netease_music;
 pub mod pixiv;
+pub mod weibo;
 
 pub trait Extractor: Extract + AsClient {}
 
