@@ -23,13 +23,6 @@ pub struct Pixiv {
     pid: String,
 }
 
-/// A extractor for pixiv user collection (bookmark).
-/// Works only when cookies are passed.
-pub struct Collection {
-    client: Client,
-    uid: String,
-}
-
 impl Pixiv {
     pub fn new(s: &str) -> Result<Self, Error> {
         let url: Url = Url::parse(s.trim_end_matches('/'))?;
@@ -100,6 +93,14 @@ impl AsClient for Pixiv {
     fn client_mut(&mut self) -> &mut Client {
         &mut self.client
     }
+}
+
+/// A extractor for pixiv user collection (bookmark).
+/// Works only when cookies are passed.
+#[derive(Debug)]
+pub struct Collection {
+    client: Client,
+    uid: String,
 }
 
 impl Collection {
